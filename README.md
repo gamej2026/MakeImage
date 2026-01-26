@@ -2,6 +2,11 @@
 
 Azure OpenAI GPT image 1.5 (DALL-E 3)를 사용하여 이미지를 생성하는 프로페셔널한 웹 애플리케이션입니다.
 
+## 🌐 서비스 URL
+
+**이 서비스는 GitHub Pages를 통해서만 제공됩니다:**
+👉 **https://gamej2026.github.io/MakeImage/**
+
 ![AI Image Generator](https://github.com/user-attachments/assets/ab4920d5-e01f-4b94-b7f0-40f5a1edcde7)
 
 ## ✨ 주요 기능
@@ -40,9 +45,13 @@ Azure OpenAI GPT image 1.5 (DALL-E 3)를 사용하여 이미지를 생성하는 
 
 ## 🚀 사용 방법
 
-### 1. 웹사이트 실행
+### 1. 웹사이트 접속
 
-#### GitHub Pages로 배포 (권장)
+**이 애플리케이션은 GitHub Pages를 통해서만 서비스됩니다.**
+
+👉 **https://gamej2026.github.io/MakeImage/** 에서 바로 사용하세요!
+
+#### GitHub Pages 배포 설정 (저장소 관리자용)
 1. GitHub 저장소 Settings > Secrets and variables > Actions
 2. 다음 Secrets 추가:
    - `AZURE_OPENAI_ENDPOINT`: Azure OpenAI 엔드포인트 (예: `https://your-resource.openai.azure.com`)
@@ -52,20 +61,7 @@ Azure OpenAI GPT image 1.5 (DALL-E 3)를 사용하여 이미지를 생성하는 
 4. GitHub Actions가 자동으로 배포
 5. `https://[username].github.io/MakeImage/` 에서 접속
 
-#### 로컬에서 실행
-```bash
-# 저장소 클론
-git clone https://github.com/gamej2026/MakeImage.git
-cd MakeImage
-
-# 간단한 HTTP 서버로 실행 (Python)
-python3 -m http.server 8080
-
-# 또는 Node.js http-server 사용
-npx http-server -p 8080
-```
-
-브라우저에서 `http://localhost:8080` 접속
+> ⚠️ **참고**: 로컬 실행은 지원하지 않습니다. GitHub Pages를 통해 서비스를 이용해주세요.
 
 ### 2. Azure OpenAI 설정
 
