@@ -4,9 +4,10 @@
 
 window.GITHUB_CONFIG = {
     AZURE_OPENAI_ENDPOINT: '',
-    DEPLOYMENT_NAME: '',
     API_KEY: ''
 };
+// Deployment name is hardcoded to gpt-image-1.5
+window.DEPLOYMENT_NAME = 'gpt-image-1.5';
 
 // Usage Tracker
 class UsageTracker {

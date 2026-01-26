@@ -46,21 +46,11 @@
                 <!-- API Settings -->
                 <div class="config-section">
                     <h3 class="config-subtitle">API Settings</h3>
-                    <div class="form-group">
-                        <label for="apiEndpoint">Azure OpenAI Endpoint</label>
-                        <input type="text" id="apiEndpoint" placeholder="https://your-resource.openai.azure.com">
-                        <span class="helper-text">Your Azure OpenAI resource endpoint</span>
-                    </div>
-                    <div class="form-group">
-                        <label for="apiKey">API Key</label>
-                        <input type="password" id="apiKey" placeholder="Enter your API key">
-                        <span class="helper-text">Your Azure OpenAI API key (stored locally)</span>
-                    </div>
-                    <div class="form-group">
-                        <label for="deploymentName">Deployment Name</label>
-                        <input type="text" id="deploymentName" placeholder="dall-e-3" value="dall-e-3">
-                        <span class="helper-text">Your DALL-E 3 deployment name</span>
-                    </div>
+                    <!-- API Endpoint, API Key, and Deployment Name are configured via GitHub Secrets -->
+                    <!-- Hidden inputs to store the values -->
+                    <input type="hidden" id="apiEndpoint">
+                    <input type="hidden" id="apiKey">
+                    <input type="hidden" id="deploymentName" value="gpt-image-1.5">
                     <div class="form-group">
                         <label for="apiVersion">API Version</label>
                         <input type="text" id="apiVersion" placeholder="2024-02-01" value="2024-02-01">

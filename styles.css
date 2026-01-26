@@ -225,6 +225,11 @@ body {
     color: var(--text-tertiary);
 }
 
+.form-group select option {
+    background: #1a1a2e;
+    color: var(--text-primary);
+}
+
 .form-group textarea {
     resize: vertical;
     min-height: 100px;

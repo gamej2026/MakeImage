@@ -15,16 +15,21 @@ class ConfigManager {
                 document.getElementById('apiEndpoint').value = window.GITHUB_CONFIG.AZURE_OPENAI_ENDPOINT;
                 console.log('[ConfigManager] Applied AZURE_OPENAI_ENDPOINT from GitHub secrets');
             }
-            if (window.GITHUB_CONFIG.DEPLOYMENT_NAME) {
-                document.getElementById('deploymentName').value = window.GITHUB_CONFIG.DEPLOYMENT_NAME;
-                console.log('[ConfigManager] Applied DEPLOYMENT_NAME from GitHub secrets');
-            }
             if (window.GITHUB_CONFIG.API_KEY) {
                 document.getElementById('apiKey').value = window.GITHUB_CONFIG.API_KEY;
                 console.log('[ConfigManager] Applied API_KEY from GitHub secrets');
             }
         } else {
             console.log('[ConfigManager] No GitHub secrets found, using localStorage or manual config');
+        }
+        
+        // Set hardcoded deployment name
+        if (typeof window.DEPLOYMENT_NAME !== 'undefined') {
+            document.getElementById('deploymentName').value = window.DEPLOYMENT_NAME;
+            console.log('[ConfigManager] Applied hardcoded DEPLOYMENT_NAME:', window.DEPLOYMENT_NAME);
+        } else {
+            document.getElementById('deploymentName').value = 'gpt-image-1.5';
+            console.log('[ConfigManager] Using default DEPLOYMENT_NAME: gpt-image-1.5');
         }
     }
 
