@@ -53,6 +53,10 @@ class ConfigManager {
         if (!config.apiEndpoint) {
             throw new Error('Azure OpenAI Endpoint is required');
         }
+        // Validate Azure OpenAI endpoint format
+        if (!config.apiEndpoint.match(/^https:\/\/[a-zA-Z0-9-]+\.openai\.azure\.com\/?$/)) {
+            throw new Error('Invalid Azure OpenAI Endpoint format. Expected: https://your-resource.openai.azure.com');
+        }
         if (!config.apiKey) {
             throw new Error('API Key is required');
         }
@@ -160,36 +164,74 @@ class ImageGenerator {
         // Get the image URL (could be url or b64_json depending on response_format)
         const imageUrl = imageData.url || (imageData.b64_json ? `data:image/png;base64,${imageData.b64_json}` : '');
 
-        card.innerHTML = `
-            <img src="${imageUrl}" alt="${prompt}" loading="lazy">
-            <div class="image-card-info">
-                <p class="image-card-prompt">${this.escapeHtml(prompt)}</p>
-                <div class="image-card-actions">
-                    <button onclick="downloadImage('${imageUrl}', 'generated-image-${Date.now()}-${index}.png')">
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                            <path d="M8 2V10M8 10L5 7M8 10L11 7" stroke="currentColor" stroke-width="2"/>
-                            <path d="M2 12V13C2 14.1 2.9 15 4 15H12C13.1 15 14 14.1 14 13V12" stroke="currentColor" stroke-width="2"/>
-                        </svg>
-                        Download
-                    </button>
-                    <button onclick="copyToClipboard('${this.escapeHtml(prompt).replace(/'/g, "\\'")}')">
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                            <path d="M10 2H4C2.9 2 2 2.9 2 4V12" stroke="currentColor" stroke-width="2"/>
-                            <path d="M6 4H12C13.1 4 14 4.9 14 6V12C14 13.1 13.1 14 12 14H6C4.9 14 4 13.1 4 12V6C4 4.9 4.9 4 6 4Z" stroke="currentColor" stroke-width="2"/>
-                        </svg>
-                        Copy Prompt
-                    </button>
-                </div>
-            </div>
+        // Create image element safely
+        const img = document.createElement('img');
+        img.src = this.sanitizeUrl(imageUrl);
+        img.alt = prompt;
+        img.loading = 'lazy';
+
+        // Create info section
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'image-card-info';
+
+        const promptP = document.createElement('p');
+        promptP.className = 'image-card-prompt';
+        promptP.textContent = prompt;
+
+        // Create actions div
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'image-card-actions';
+
+        // Download button
+        const downloadBtn = document.createElement('button');
+        downloadBtn.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M8 2V10M8 10L5 7M8 10L11 7" stroke="currentColor" stroke-width="2"/>
+                <path d="M2 12V13C2 14.1 2.9 15 4 15H12C13.1 15 14 14.1 14 13V12" stroke="currentColor" stroke-width="2"/>
+            </svg>
+            Download
         `;
+        downloadBtn.addEventListener('click', () => {
+            downloadImage(this.sanitizeUrl(imageUrl), `generated-image-${Date.now()}-${index}.png`);
+        });
+
+        // Copy button
+        const copyBtn = document.createElement('button');
+        copyBtn.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M10 2H4C2.9 2 2 2.9 2 4V12" stroke="currentColor" stroke-width="2"/>
+                <path d="M6 4H12C13.1 4 14 4.9 14 6V12C14 13.1 13.1 14 12 14H6C4.9 14 4 13.1 4 12V6C4 4.9 4.9 4 6 4Z" stroke="currentColor" stroke-width="2"/>
+            </svg>
+            Copy Prompt
+        `;
+        copyBtn.addEventListener('click', () => {
+            copyToClipboard(prompt);
+        });
+
+        actionsDiv.appendChild(downloadBtn);
+        actionsDiv.appendChild(copyBtn);
+        infoDiv.appendChild(promptP);
+        infoDiv.appendChild(actionsDiv);
+        card.appendChild(img);
+        card.appendChild(infoDiv);
 
         return card;
     }
 
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+    sanitizeUrl(url) {
+        // Only allow https, http, data, and blob URLs
+        try {
+            const parsedUrl = new URL(url);
+            if (['https:', 'http:', 'data:', 'blob:'].includes(parsedUrl.protocol)) {
+                return url;
+            }
+        } catch (e) {
+            // If URL parsing fails, check if it's a data URL
+            if (url.startsWith('data:image/')) {
+                return url;
+            }
+        }
+        return ''; // Return empty string for invalid URLs
     }
 }
 
