@@ -123,8 +123,23 @@
                         <select id="style">
                             <option value="vivid">Vivid (Hyper-real and dramatic)</option>
                             <option value="natural">Natural (More natural, less hyper-real)</option>
+                            <option value="artistic">Artistic (Painterly and creative)</option>
+                            <option value="photorealistic">Photorealistic (Like a photograph)</option>
+                            <option value="cinematic">Cinematic (Movie-like quality)</option>
+                            <option value="anime">Anime (Japanese animation style)</option>
+                            <option value="watercolor">Watercolor (Soft watercolor painting)</option>
+                            <option value="oil-painting">Oil Painting (Classic oil painting)</option>
+                            <option value="sketch">Sketch (Hand-drawn sketch)</option>
+                            <option value="3d-render">3D Render (3D computer graphics)</option>
+                            <option value="custom">Custom (Enter your own style)</option>
                         </select>
                         <span class="helper-text">Visual style of the generated image</span>
+                    </div>
+
+                    <div class="form-group" id="customStyleGroup" style="display: none;">
+                        <label for="customStyle">Custom Style Description</label>
+                        <input type="text" id="customStyle" placeholder="Enter your custom style description...">
+                        <span class="helper-text">Describe the style you want (e.g., "vintage comic book", "neon cyberpunk")</span>
                     </div>
 
                     <div class="form-group">

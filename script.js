@@ -38,6 +38,7 @@ class ConfigManager {
             size: document.getElementById('size').value,
             quality: document.getElementById('quality').value,
             style: document.getElementById('style').value,
+            customStyle: document.getElementById('customStyle').value,
             numImages: document.getElementById('numImages').value
         };
         localStorage.setItem(this.configKey, JSON.stringify(config));
@@ -56,7 +57,14 @@ class ConfigManager {
             if (config.apiVersion) document.getElementById('apiVersion').value = config.apiVersion;
             if (config.size) document.getElementById('size').value = config.size;
             if (config.quality) document.getElementById('quality').value = config.quality;
-            if (config.style) document.getElementById('style').value = config.style;
+            if (config.style) {
+                document.getElementById('style').value = config.style;
+                // Show custom style input if style is 'custom'
+                if (config.style === 'custom') {
+                    document.getElementById('customStyleGroup').style.display = 'block';
+                }
+            }
+            if (config.customStyle) document.getElementById('customStyle').value = config.customStyle;
             if (config.numImages) document.getElementById('numImages').value = config.numImages;
             console.log('[ConfigManager] Configuration loaded from localStorage');
         } else {
@@ -65,6 +73,9 @@ class ConfigManager {
     }
 
     getConfig() {
+        const styleValue = document.getElementById('style').value;
+        const customStyle = document.getElementById('customStyle').value.trim();
+        
         const config = {
             apiEndpoint: document.getElementById('apiEndpoint').value.trim(),
             apiKey: document.getElementById('apiKey').value.trim(),
@@ -73,7 +84,8 @@ class ConfigManager {
             prompt: document.getElementById('prompt').value.trim(),
             size: document.getElementById('size').value,
             quality: document.getElementById('quality').value,
-            style: document.getElementById('style').value,
+            style: styleValue,
+            customStyle: customStyle,
             n: parseInt(document.getElementById('numImages').value),
             generationMode: document.getElementById('generationMode').value
         };
@@ -104,6 +116,9 @@ class ConfigManager {
         }
         if (!config.prompt) {
             throw new Error('Prompt is required');
+        }
+        if (config.style === 'custom' && !config.customStyle) {
+            throw new Error('Custom style description is required when using custom style');
         }
         if (config.n < 1 || config.n > 10) {
             throw new Error('Number of images must be between 1 and 10');
@@ -157,13 +172,41 @@ class ImageGenerator {
             console.log('[ImageGenerator] Step 3: Building API request...');
             console.log('[ImageGenerator] API Endpoint:', url);
 
+            // Build the prompt with style enhancements
+            let enhancedPrompt = config.prompt;
+            let apiStyle = config.style;
+            
+            // Azure OpenAI only supports 'vivid' and 'natural' styles directly
+            // For other styles, we enhance the prompt with style descriptions
+            if (config.style !== 'vivid' && config.style !== 'natural') {
+                const styleDescriptions = {
+                    'artistic': 'in an artistic and painterly style',
+                    'photorealistic': 'in a photorealistic style, like a high-quality photograph',
+                    'cinematic': 'in a cinematic style with dramatic lighting and composition',
+                    'anime': 'in anime style, Japanese animation art',
+                    'watercolor': 'in a soft watercolor painting style',
+                    'oil-painting': 'in a classic oil painting style',
+                    'sketch': 'as a hand-drawn sketch or pencil drawing',
+                    '3d-render': 'as a 3D computer graphics render',
+                    'custom': config.customStyle
+                };
+                
+                const styleDesc = styleDescriptions[config.style] || '';
+                if (styleDesc) {
+                    enhancedPrompt = `${config.prompt} ${styleDesc}`;
+                    console.log('[ImageGenerator] Enhanced prompt with style:', styleDesc);
+                }
+                // Default to 'vivid' for custom styles to get better results
+                apiStyle = 'vivid';
+            }
+
             // Prepare request body according to Azure OpenAI API specs
             const requestBody = {
-                prompt: config.prompt,
+                prompt: enhancedPrompt,
                 size: config.size,
                 n: config.n,
                 quality: config.quality,
-                style: config.style
+                style: apiStyle
             };
 
             // Add reference image context if in image+text mode
@@ -541,6 +584,17 @@ document.addEventListener('DOMContentLoaded', () => {
     setupImageUpload(imageGenerator);
 
     console.log('[Init] Attaching event listeners...');
+    
+    // Style dropdown change handler
+    document.getElementById('style').addEventListener('change', (e) => {
+        console.log('[Event] Style changed to:', e.target.value);
+        const customStyleGroup = document.getElementById('customStyleGroup');
+        if (e.target.value === 'custom') {
+            customStyleGroup.style.display = 'block';
+        } else {
+            customStyleGroup.style.display = 'none';
+        }
+    });
     
     // Event Listeners
     document.getElementById('generateBtn').addEventListener('click', () => {
