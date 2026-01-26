@@ -126,13 +126,6 @@ body {
     background-clip: text;
     line-height: 1;
 }
-    font-weight: 700;
-    background: var(--success-gradient);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    line-height: 1;
-}
 
 /* Main Content Layout */
 .main-content {
