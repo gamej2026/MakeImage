@@ -117,7 +117,7 @@ class ConfigManager {
         if (!config.prompt) {
             throw new Error('Prompt is required');
         }
-        if (config.style === 'custom' && !config.customStyle) {
+        if (config.style === 'custom' && !config.customStyle?.trim()) {
             throw new Error('Custom style description is required when using custom style');
         }
         if (config.n < 1 || config.n > 10) {
@@ -188,12 +188,12 @@ class ImageGenerator {
                     'oil-painting': 'in a classic oil painting style',
                     'sketch': 'as a hand-drawn sketch or pencil drawing',
                     '3d-render': 'as a 3D computer graphics render',
-                    'custom': config.customStyle || ''
+                    'custom': config.customStyle?.trim() || ''
                 };
                 
                 const styleDesc = styleDescriptions[config.style] || '';
-                if (styleDesc && styleDesc.trim()) {
-                    enhancedPrompt = `${config.prompt} ${styleDesc.trim()}`;
+                if (styleDesc) {
+                    enhancedPrompt = `${config.prompt} ${styleDesc}`;
                     console.log('[ImageGenerator] Enhanced prompt with style:', styleDesc);
                 }
                 // Default to 'vivid' for custom styles to get better results
