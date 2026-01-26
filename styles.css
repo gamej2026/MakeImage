@@ -70,6 +70,62 @@ body {
     font-size: 1.1rem;
 }
 
+/* Usage Display */
+.usage-display {
+    margin-top: 1.5rem;
+    display: flex;
+    justify-content: center;
+    animation: fadeIn 1s ease 0.3s both;
+}
+
+.usage-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    background: var(--surface);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    transition: all 0.3s ease;
+}
+
+.usage-card:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+}
+
+.usage-card svg {
+    color: var(--accent-color);
+    flex-shrink: 0;
+}
+
+.usage-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+}
+
+.usage-label {
+    font-size: 0.85rem;
+    color: var(--text-tertiary);
+    font-weight: 500;
+}
+
+.usage-count {
+    font-size: 1.75rem;
+    font-weight: 700;
+    background: var(--success-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1;
+}
+
 /* Main Content Layout */
 .main-content {
     display: grid;
@@ -437,6 +493,15 @@ body {
     }
 }
 
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+}
+
 /* Responsive Design */
 @media (max-width: 1200px) {
     .main-content {
@@ -465,6 +530,24 @@ body {
     
     .logo h1 {
         font-size: 2rem;
+    }
+    
+    .usage-card {
+        padding: 0.75rem 1rem;
+        gap: 0.75rem;
+    }
+    
+    .usage-card svg {
+        width: 20px;
+        height: 20px;
+    }
+    
+    .usage-label {
+        font-size: 0.75rem;
+    }
+    
+    .usage-count {
+        font-size: 1.5rem;
     }
     
     .config-panel,
