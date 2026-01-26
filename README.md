@@ -19,7 +19,7 @@ Azure OpenAI GPT image 1.5 (DALL-E 3)를 사용하여 이미지를 생성하는 
   - 🖼️ **Generation Mode**: Text-only 또는 Image + Text (참조 이미지 기반)
   - 📐 **Size**: 1024x1024 (정사각형), 1792x1024 (가로), 1024x1792 (세로)
   - 🎯 **Quality**: Standard, HD (고화질)
-  - 🎨 **Style**: Vivid (생생하고 극적), Natural (자연스러운)
+  - 🎨 **Style**: Vivid, Natural, Artistic, Photorealistic, Cinematic, Anime, Watercolor, Oil Painting, Sketch, 3D Render, Custom (사용자 정의 스타일)
   - 🔢 **Number of Images**: 1-10개 동시 생성
 
 ### 새로운 기능 (v2.0)
@@ -139,6 +139,15 @@ Azure OpenAI GPT image 1.5 (DALL-E 3)를 사용하여 이미지를 생성하는 
 - `style` (string): 이미지 스타일
   - `vivid`: 생생하고 극적인 스타일 (기본값)
   - `natural`: 자연스러운 스타일
+  - `artistic`: 회화적이고 창의적인 스타일
+  - `photorealistic`: 사진과 같은 사실적인 스타일
+  - `cinematic`: 영화 같은 품질
+  - `anime`: 일본 애니메이션 스타일
+  - `watercolor`: 부드러운 수채화 스타일
+  - `oil-painting`: 클래식 유화 스타일
+  - `sketch`: 손으로 그린 스케치
+  - `3d-render`: 3D 컴퓨터 그래픽스
+  - `custom`: 사용자 정의 스타일 (직접 입력)
   
 - `n` (integer): 생성할 이미지 개수
   - 범위: 1-10 (기본값: 1)
@@ -198,10 +207,19 @@ MakeImage/
 1. **프롬프트 작성**: 구체적이고 상세할수록 좋은 결과
 2. **HD 품질**: 중요한 이미지는 HD 품질 선택
 3. **스타일 선택**: 
-   - Vivid: 포스터, 광고, 예술작품
-   - Natural: 사진, 일상적인 장면
+   - **Vivid**: 포스터, 광고, 예술작품 - 생생하고 극적인 결과
+   - **Natural**: 사진, 일상적인 장면 - 자연스럽고 사실적
+   - **Artistic**: 회화 같은 창의적인 표현
+   - **Photorealistic**: 실제 사진처럼 사실적인 이미지
+   - **Cinematic**: 영화 같은 극적인 조명과 구도
+   - **Anime**: 일본 애니메이션 스타일
+   - **Watercolor/Oil Painting**: 전통적인 회화 스타일
+   - **Sketch**: 손그림 스케치 느낌
+   - **3D Render**: 3D 그래픽스 스타일
+   - **Custom**: 원하는 스타일을 직접 입력 (예: "빈티지 만화책 스타일", "네온 사이버펑크")
 4. **배치 생성**: 여러 변형을 한 번에 생성하여 최선의 결과 선택
 5. **참조 이미지**: 기존 이미지의 스타일이나 구도를 참조하고 싶을 때 사용
+6. **사용자 정의 스타일**: Custom 옵션을 선택하고 원하는 스타일을 자세히 설명하면 더 독특한 결과를 얻을 수 있습니다
 
 ## 🐛 문제 해결
 
