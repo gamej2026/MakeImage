@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Image Generator - Azure OpenAI</title>
     <link rel="stylesheet" href="styles.css">
+    <script src="config.js"></script>
 </head>
 <body>
     <div class="container">
@@ -62,9 +63,37 @@
                     <h3 class="config-subtitle">Image Parameters</h3>
                     
                     <div class="form-group">
+                        <label for="generationMode">Generation Mode</label>
+                        <select id="generationMode">
+                            <option value="text-only">Text to Image</option>
+                            <option value="image-with-text">Image + Text (Reference Image)</option>
+                        </select>
+                        <span class="helper-text">Choose generation mode</span>
+                    </div>
+
+                    <div class="form-group" id="imageUploadGroup" style="display: none;">
+                        <label for="referenceImage">Reference Image</label>
+                        <div class="image-upload-container">
+                            <input type="file" id="referenceImage" accept="image/*" style="display: none;">
+                            <button type="button" id="uploadImageBtn" class="btn-upload">
+                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                    <path d="M10 14V6M10 6L6 10M10 6L14 10" stroke="currentColor" stroke-width="2"/>
+                                    <path d="M3 14V16C3 17.1 3.9 18 5 18H15C16.1 18 17 17.1 17 16V14" stroke="currentColor" stroke-width="2"/>
+                                </svg>
+                                Upload Image
+                            </button>
+                            <div id="imagePreview" class="image-preview" style="display: none;">
+                                <img id="previewImg" src="" alt="Preview">
+                                <button type="button" id="removeImageBtn" class="btn-remove">×</button>
+                            </div>
+                        </div>
+                        <span class="helper-text">Upload a reference image to guide generation</span>
+                    </div>
+
+                    <div class="form-group">
                         <label for="prompt">Prompt</label>
                         <textarea id="prompt" rows="4" placeholder="Describe the image you want to generate..."></textarea>
-                        <span class="helper-text">Detailed description of the image</span>
+                        <span class="helper-text" id="promptHelperText">Detailed description of the image</span>
                     </div>
 
                     <div class="form-group">
