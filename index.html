@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Image Generator - Azure OpenAI</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="40" height="40" rx="12" fill="url(#gradient)"/>
+                    <path d="M20 10L28 16V24L20 30L12 24V16L20 10Z" fill="white"/>
+                    <defs>
+                        <linearGradient id="gradient" x1="0" y1="0" x2="40" y2="40">
+                            <stop offset="0%" stop-color="#667eea"/>
+                            <stop offset="100%" stop-color="#764ba2"/>
+                        </linearGradient>
+                    </defs>
+                </svg>
+                <h1>AI Image Generator</h1>
+            </div>
+            <p class="subtitle">Powered by Azure OpenAI GPT Image 1.5</p>
+        </header>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Configuration Panel -->
+            <div class="config-panel">
+                <h2 class="section-title">Configuration</h2>
+                
+                <!-- API Settings -->
+                <div class="config-section">
+                    <h3 class="config-subtitle">API Settings</h3>
+                    <div class="form-group">
+                        <label for="apiEndpoint">Azure OpenAI Endpoint</label>
+                        <input type="text" id="apiEndpoint" placeholder="https://your-resource.openai.azure.com">
+                        <span class="helper-text">Your Azure OpenAI resource endpoint</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="apiKey">API Key</label>
+                        <input type="password" id="apiKey" placeholder="Enter your API key">
+                        <span class="helper-text">Your Azure OpenAI API key (stored locally)</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="deploymentName">Deployment Name</label>
+                        <input type="text" id="deploymentName" placeholder="dall-e-3" value="dall-e-3">
+                        <span class="helper-text">Your DALL-E 3 deployment name</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="apiVersion">API Version</label>
+                        <input type="text" id="apiVersion" placeholder="2024-02-01" value="2024-02-01">
+                        <span class="helper-text">Azure OpenAI API version</span>
+                    </div>
+                </div>
+
+                <!-- Image Generation Parameters -->
+                <div class="config-section">
+                    <h3 class="config-subtitle">Image Parameters</h3>
+                    
+                    <div class="form-group">
+                        <label for="prompt">Prompt</label>
+                        <textarea id="prompt" rows="4" placeholder="Describe the image you want to generate..."></textarea>
+                        <span class="helper-text">Detailed description of the image</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="size">Image Size</label>
+                        <select id="size">
+                            <option value="1024x1024">1024x1024 (Square)</option>
+                            <option value="1792x1024">1792x1024 (Landscape)</option>
+                            <option value="1024x1792">1024x1792 (Portrait)</option>
+                        </select>
+                        <span class="helper-text">Dimensions of the generated image</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="quality">Quality</label>
+                        <select id="quality">
+                            <option value="standard">Standard</option>
+                            <option value="hd">HD (High Definition)</option>
+                        </select>
+                        <span class="helper-text">Image quality level</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="style">Style</label>
+                        <select id="style">
+                            <option value="vivid">Vivid (Hyper-real and dramatic)</option>
+                            <option value="natural">Natural (More natural, less hyper-real)</option>
+                        </select>
+                        <span class="helper-text">Visual style of the generated image</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="numImages">Number of Images</label>
+                        <input type="number" id="numImages" min="1" max="10" value="1">
+                        <span class="helper-text">Number of images to generate (1-10)</span>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="action-buttons">
+                    <button id="generateBtn" class="btn btn-primary">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M10 2L2 8L10 14L18 8L10 2Z" fill="currentColor"/>
+                            <path d="M2 12L10 18L18 12" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                        Generate Image
+                    </button>
+                    <button id="saveConfigBtn" class="btn btn-secondary">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M15 2H5C3.9 2 3 2.9 3 4V16C3 17.1 3.9 18 5 18H15C16.1 18 17 17.1 17 16V4C17 2.9 16.1 2 15 2Z" stroke="currentColor" stroke-width="2"/>
+                            <path d="M7 2V6H13V2" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                        Save Config
+                    </button>
+                    <button id="loadConfigBtn" class="btn btn-secondary">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M10 2V10M10 10L6 6M10 10L14 6" stroke="currentColor" stroke-width="2"/>
+                            <path d="M3 14V16C3 17.1 3.9 18 5 18H15C16.1 18 17 17.1 17 16V14" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                        Load Config
+                    </button>
+                </div>
+            </div>
+
+            <!-- Results Panel -->
+            <div class="results-panel">
+                <h2 class="section-title">Generated Images</h2>
+                
+                <!-- Status Messages -->
+                <div id="statusMessage" class="status-message"></div>
+                
+                <!-- Loading Spinner -->
+                <div id="loadingSpinner" class="loading-spinner" style="display: none;">
+                    <div class="spinner"></div>
+                    <p>Generating your images...</p>
+                    <p class="loading-subtext">This may take a few moments</p>
+                </div>
+
+                <!-- Images Gallery -->
+                <div id="imageGallery" class="image-gallery"></div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>&copy; 2026 AI Image Generator. Powered by Azure OpenAI.</p>
+            <p class="footer-links">
+                <a href="https://learn.microsoft.com/en-us/azure/ai-services/openai/dall-e-quickstart" target="_blank">Documentation</a>
+                <span>•</span>
+                <a href="https://github.com/gamej2026/MakeImage" target="_blank">GitHub</a>
+            </p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
