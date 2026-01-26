@@ -173,7 +173,7 @@ class ImageGenerator {
                 console.log('[ImageGenerator] The uploaded image serves as visual reference for prompt creation');
                 // Note: Azure DALL-E 3 doesn't support direct image input in API,
                 // The reference image is stored for user reference but not sent to API
-                requestBody.prompt = `${config.prompt} (Style reference: uploaded image)`;
+                requestBody.prompt = `${requestBody.prompt} (Style reference: uploaded image)`;
             }
 
             console.log('[ImageGenerator] Request body:', {
