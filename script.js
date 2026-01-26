@@ -155,7 +155,7 @@ class ImageGenerator {
             const url = `${endpoint}/openai/deployments/${config.deploymentName}/images/generations?api-version=${config.apiVersion}`;
             
             console.log('[ImageGenerator] Step 3: Building API request...');
-            console.log('[ImageGenerator] API Endpoint:', url.replace(/api-key=[^&]+/, 'api-key=[REDACTED]'));
+            console.log('[ImageGenerator] API Endpoint:', url);
 
             // Prepare request body according to Azure OpenAI API specs
             const requestBody = {
@@ -166,12 +166,14 @@ class ImageGenerator {
                 style: config.style
             };
 
-            // Add reference image if in image+text mode
+            // Add reference image context if in image+text mode
             if (config.generationMode === 'image-with-text' && this.referenceImageBase64) {
-                console.log('[ImageGenerator] Adding reference image to prompt (embedded description)');
-                requestBody.prompt = `Based on the provided reference image: ${config.prompt}`;
+                console.log('[ImageGenerator] Reference image uploaded - enhancing prompt with context');
+                console.log('[ImageGenerator] Note: Azure DALL-E 3 API does not accept image input directly');
+                console.log('[ImageGenerator] The uploaded image serves as visual reference for prompt creation');
                 // Note: Azure DALL-E 3 doesn't support direct image input in API,
-                // so we enhance the prompt to guide generation
+                // The reference image is stored for user reference but not sent to API
+                requestBody.prompt = `${config.prompt} (Style reference: uploaded image)`;
             }
 
             console.log('[ImageGenerator] Request body:', {

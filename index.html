@@ -87,13 +87,16 @@
                                 <button type="button" id="removeImageBtn" class="btn-remove">×</button>
                             </div>
                         </div>
-                        <span class="helper-text">Upload a reference image to guide generation</span>
+                        <span class="helper-text">Upload a reference image for visual context (not directly processed by API)</span>
                     </div>
 
                     <div class="form-group">
                         <label for="prompt">Prompt</label>
                         <textarea id="prompt" rows="4" placeholder="Describe the image you want to generate..."></textarea>
                         <span class="helper-text" id="promptHelperText">Detailed description of the image</span>
+                        <div class="info-note" style="margin-top: 0.5rem; padding: 0.75rem; background: rgba(79, 172, 254, 0.1); border: 1px solid rgba(79, 172, 254, 0.3); border-radius: 8px; font-size: 0.85rem; color: #4facfe;">
+                            <strong>Note:</strong> Azure DALL-E 3 does not support direct image input. The reference image helps you visualize what you want and craft a better prompt.
+                        </div>
                     </div>
 
                     <div class="form-group">
