@@ -129,8 +129,9 @@ class ConfigManager {
 
 // Image Generator
 class ImageGenerator {
-    constructor(configManager) {
+    constructor(configManager, usageTracker) {
         this.configManager = configManager;
+        this.usageTracker = usageTracker;
         this.generatedImages = [];
         this.referenceImageBase64 = null;
     }
@@ -260,6 +261,15 @@ class ImageGenerator {
                 console.log('[ImageGenerator] Step 6: Processing and displaying images...');
                 this.displayImages(data.data, config.prompt);
                 console.log(`[ImageGenerator] ✓ Successfully generated and displayed ${data.data.length} image(s)!`);
+                
+                // Update usage tracker
+                try {
+                    this.usageTracker.addImages(data.data.length);
+                } catch (error) {
+                    console.error('[UsageTracker] Failed to update usage count:', error);
+                    // Don't let tracker errors affect image generation success
+                }
+                
                 showStatus(`Successfully generated ${data.data.length} image(s)!`, 'success');
             } else {
                 console.error('[ImageGenerator] ✗ No images returned from API');
@@ -577,8 +587,12 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const configManager = new ConfigManager();
     
+    console.log('[Init] Initializing usage tracker...');
+    const usageTracker = new UsageTracker();
+    usageTracker.updateDisplay();
+    
     console.log('[Init] Initializing image generator...');
-    const imageGenerator = new ImageGenerator(configManager);
+    const imageGenerator = new ImageGenerator(configManager, usageTracker);
 
     console.log('[Init] Setting up image upload functionality...');
     setupImageUpload(imageGenerator);
