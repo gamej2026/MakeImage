@@ -188,12 +188,12 @@ class ImageGenerator {
                     'oil-painting': 'in a classic oil painting style',
                     'sketch': 'as a hand-drawn sketch or pencil drawing',
                     '3d-render': 'as a 3D computer graphics render',
-                    'custom': config.customStyle
+                    'custom': config.customStyle || ''
                 };
                 
                 const styleDesc = styleDescriptions[config.style] || '';
-                if (styleDesc) {
-                    enhancedPrompt = `${config.prompt} ${styleDesc}`;
+                if (styleDesc && styleDesc.trim()) {
+                    enhancedPrompt = `${config.prompt} ${styleDesc.trim()}`;
                     console.log('[ImageGenerator] Enhanced prompt with style:', styleDesc);
                 }
                 // Default to 'vivid' for custom styles to get better results
