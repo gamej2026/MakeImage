@@ -173,7 +173,7 @@ class ImageGenerator {
             console.log('[ImageGenerator] API Endpoint:', url);
 
             // Build the prompt with style enhancements
-            let enhancedPrompt = config.prompt;
+            let enhancedPrompt = config.prompt.trim();
             let apiStyle = config.style;
             
             // Azure OpenAI only supports 'vivid' and 'natural' styles directly
@@ -191,9 +191,9 @@ class ImageGenerator {
                     'custom': config.customStyle?.trim() || ''
                 };
                 
-                const styleDesc = styleDescriptions[config.style] || '';
+                const styleDesc = (styleDescriptions[config.style] || '').trim();
                 if (styleDesc) {
-                    enhancedPrompt = `${config.prompt} ${styleDesc}`;
+                    enhancedPrompt = `${enhancedPrompt} ${styleDesc}`;
                     console.log('[ImageGenerator] Enhanced prompt with style:', styleDesc);
                 }
                 // Default to 'vivid' for custom styles to get better results
