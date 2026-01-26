@@ -12,13 +12,16 @@ window.GITHUB_CONFIG = {
 class UsageTracker {
     constructor() {
         this.usageKey = 'imageGenerationUsage';
+        this.ANIMATION_RESET_DELAY = 10; // Milliseconds to wait before reapplying animation
         this.totalCount = this.loadUsage();
         console.log('[UsageTracker] Initialized with total count:', this.totalCount);
     }
 
     loadUsage() {
         const saved = localStorage.getItem(this.usageKey);
-        return saved ? parseInt(saved, 10) : 0;
+        const parsedValue = saved ? parseInt(saved, 10) : 0;
+        // Validate that we got a valid number
+        return !isNaN(parsedValue) && parsedValue >= 0 ? parsedValue : 0;
     }
 
     saveUsage() {
@@ -41,7 +44,7 @@ class UsageTracker {
             displayElement.style.animation = 'none';
             setTimeout(() => {
                 displayElement.style.animation = 'pulse 0.5s ease';
-            }, 10);
+            }, this.ANIMATION_RESET_DELAY);
         }
     }
 

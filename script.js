@@ -220,7 +220,12 @@ class ImageGenerator {
                 console.log(`[ImageGenerator] ✓ Successfully generated and displayed ${data.data.length} image(s)!`);
                 
                 // Update usage tracker
-                this.usageTracker.addImages(data.data.length);
+                try {
+                    this.usageTracker.addImages(data.data.length);
+                } catch (error) {
+                    console.error('[UsageTracker] Failed to update usage count:', error);
+                    // Don't let tracker errors affect image generation success
+                }
                 
                 showStatus(`Successfully generated ${data.data.length} image(s)!`, 'success');
             } else {
