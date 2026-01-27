@@ -127,6 +127,13 @@ body {
     line-height: 1;
 }
 
+.usage-unit {
+    font-size: 0.85rem;
+    color: var(--text-tertiary);
+    font-weight: 500;
+    margin-left: 0.25rem;
+}
+
 /* Main Content Layout */
 .main-content {
     display: grid;
