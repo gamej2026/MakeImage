@@ -9,6 +9,10 @@ Azure OpenAI GPT image 1.5 (DALL-E 3)를 사용하여 이미지를 생성하는 
 
 ![AI Image Generator](https://github.com/user-attachments/assets/ab4920d5-e01f-4b94-b7f0-40f5a1edcde7)
 
+**새로운 이미지 편집 기능:**
+
+![Image Editing Mode](https://github.com/user-attachments/assets/4602b0db-e175-4a13-846e-b99d9c9c1ee9)
+
 ## ✨ 주요 기능
 
 ### 완전한 API 제어
@@ -16,17 +20,22 @@ Azure OpenAI GPT image 1.5 (DALL-E 3)를 사용하여 이미지를 생성하는 
 - **GitHub Secrets 지원**: 배포 시 GitHub Secrets에서 자동으로 설정 로드
 - **이미지 생성 파라미터**:
   - 📝 **Prompt**: 상세한 이미지 설명 입력
-  - 🖼️ **Generation Mode**: Text-only 또는 Image + Text (참조 이미지 기반)
+  - 🖼️ **Generation Mode**: Text-only, Image + Text (참조 이미지), Image Editing (인페인팅)
   - 📐 **Size**: 1024x1024 (정사각형), 1792x1024 (가로), 1024x1792 (세로)
   - 🎯 **Quality**: Standard, HD (고화질)
   - 🎨 **Style**: Vivid, Natural, Artistic, Photorealistic, Cinematic, Anime, Watercolor, Oil Painting, Sketch, 3D Render, Custom (사용자 정의 스타일)
   - 🔢 **Number of Images**: 1-10개 동시 생성
 
-### 새로운 기능 (v2.0)
+### 새로운 기능 (v3.0)
+- ✅ **이미지 편집 (인페인팅)**: 이미지의 특정 영역을 마스크하고 AI로 재생성
+- ✅ **마스크 에디터**: 브러시/지우개 도구로 편집 영역 직접 그리기
+- ✅ **이미지 입력 지원**: 기존 이미지를 업로드하여 편집 가능
+- ✅ **Azure OpenAI 이미지 편집 API 통합**: /images/edits 엔드포인트 지원
+
+### 이전 기능 (v2.0)
 - ✅ **GitHub Secrets 통합**: AZURE_OPENAI_ENDPOINT, DEPLOYMENT_NAME, API_KEY를 GitHub Secrets에서 자동 로드
 - ✅ **향상된 로깅**: 개발자 콘솔에 의미 있는 진행 상황 로그 출력
 - ✅ **Image + Text Prompt**: 참조 이미지를 업로드하여 이미지 기반 생성 가능
-- ℹ️ **Inpainting/Outpainting**: Azure DALL-E 3 API가 아직 지원하지 않아 구현 불가
 
 ### 2026 최신 트렌드 UI/UX
 - 🌌 **Glassmorphism 디자인**: 현대적인 유리 효과와 블러 처리
@@ -98,7 +107,28 @@ Azure OpenAI GPT image 1.5 (DALL-E 3)를 사용하여 이미지를 생성하는 
 - Azure DALL-E 3 API는 직접적인 이미지 입력을 지원하지 않습니다
 - 업로드된 참조 이미지는 사용자가 원하는 것을 시각화하고 더 나은 프롬프트를 작성하는 데 도움을 주는 용도입니다
 - 실제 API 호출 시 이미지 데이터는 전송되지 않으며, 프롬프트만 사용됩니다
-- 이미지 편집/변형이 필요한 경우 다른 도구를 사용하세요
+
+#### Image Editing (인페인팅) - 새로운 기능!
+1. **Generation Mode**: "Image Editing (Inpainting)" 선택
+2. **이미지 업로드**: "Upload Image" 버튼 클릭하여 편집할 이미지 업로드
+3. **마스크 그리기**: 
+   - 편집하고 싶은 영역을 브러시로 그리기
+   - 실수한 경우 지우개 도구로 수정
+   - 브러시 크기 조절 가능
+   - "Clear" 버튼으로 마스크 전체 삭제
+4. **프롬프트 입력**: 마스크된 영역에 생성하고 싶은 내용 설명
+5. **"Generate Image" 클릭**: 마스크된 영역이 프롬프트에 따라 재생성됨
+
+**🎨 사용 예시**:
+- 사진에서 배경 교체하기
+- 이미지에 새로운 객체 추가하기
+- 이미지의 특정 부분 수정하기
+- 불필요한 요소 제거하고 자연스럽게 채우기
+
+**⚠️ 알아두기**: 
+- Azure OpenAI DALL-E 이미지 편집 API를 사용합니다
+- 마스크된 영역(흰색으로 표시)만 재생성됩니다
+- 최상의 결과를 위해 명확한 프롬프트를 작성하세요
 
 ### 4. 이미지 관리
 
