@@ -355,7 +355,7 @@ class ImageGenerator {
                 });
                 // Display them after DOM is ready
                 if (document.getElementById('imageGallery')) {
-                    this.restoreImagestoGallery();
+                    this.restoreImagesToGallery();
                 }
             } else {
                 console.log('[ImageGenerator] No saved images found');
@@ -365,7 +365,7 @@ class ImageGenerator {
         }
     }
 
-    restoreImagestoGallery() {
+    restoreImagesToGallery() {
         console.log('[ImageGenerator] Restoring', this.generatedImages.length, 'images to gallery');
         const gallery = document.getElementById('imageGallery');
         if (!gallery) {
@@ -1147,7 +1147,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Restore saved images to gallery after DOM is ready
     setTimeout(() => {
-        imageGenerator.restoreImagestoGallery();
+        imageGenerator.restoreImagesToGallery();
     }, 100);
 
     console.log('[Init] Initializing mask editor...');
@@ -1169,12 +1169,10 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             customStyleGroup.style.display = 'none';
         }
-        // Auto-save config on change
-        configManager.saveConfig();
     });
     
     // Auto-save configuration on field changes
-    const autoSaveFields = ['apiVersion', 'size', 'quality', 'customStyle', 'numImages'];
+    const autoSaveFields = ['apiVersion', 'size', 'quality', 'style', 'customStyle', 'numImages'];
     autoSaveFields.forEach(fieldId => {
         const element = document.getElementById(fieldId);
         if (element) {
