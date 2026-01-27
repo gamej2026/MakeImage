@@ -427,9 +427,24 @@ class ImageGenerator {
                     prompt: enhancedPrompt,
                     size: config.size,
                     n: config.n,
-                    quality: config.quality,
-                    style: apiStyle
+                    quality: config.quality
                 };
+                
+                // Only include 'style' parameter for DALL-E 3 models
+                // GPT-image models (gpt-image-1, gpt-image-1.5) do not support the 'style' parameter
+                // DALL-E 3 deployments typically have names like: dall-e-3, dalle3, DALL-E-3, etc.
+                const deploymentLower = config.deploymentName.toLowerCase();
+                const isDallE3 = deploymentLower.includes('dall-e-3') || 
+                                 deploymentLower.includes('dalle-3') ||
+                                 deploymentLower.includes('dalle3') ||
+                                 (deploymentLower.includes('dall') && deploymentLower.includes('3'));
+                
+                if (isDallE3) {
+                    requestBody.style = apiStyle;
+                    console.log('[ImageGenerator] DALL-E 3 model detected - including style parameter:', apiStyle);
+                } else {
+                    console.log('[ImageGenerator] Non-DALL-E-3 model detected - excluding style parameter (styles applied via prompt enhancement)');
+                }
 
                 // Add reference image context if in image+text mode
                 if (config.generationMode === 'image-with-text' && this.referenceImageBase64) {
