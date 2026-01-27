@@ -308,6 +308,80 @@ class ImageGenerator {
         this.usageTracker = usageTracker;
         this.generatedImages = [];
         this.referenceImageBase64 = null;
+        this.imageStorageKey = 'generatedImagesGallery';
+        this.loadImagesFromStorage();
+    }
+
+    saveImagesToStorage() {
+        try {
+            console.log('[ImageGenerator] Saving images to localStorage...');
+            const imagesToSave = this.generatedImages.map(img => ({
+                url: img.url,
+                prompt: img.prompt,
+                timestamp: img.timestamp || Date.now()
+            }));
+            localStorage.setItem(this.imageStorageKey, JSON.stringify(imagesToSave));
+            console.log('[ImageGenerator] Saved', imagesToSave.length, 'images to localStorage');
+        } catch (error) {
+            console.error('[ImageGenerator] Failed to save images to localStorage:', error);
+            // If storage is full, try to keep only recent images
+            if (error.name === 'QuotaExceededError') {
+                console.log('[ImageGenerator] Storage full, keeping only last 10 images');
+                this.generatedImages = this.generatedImages.slice(-10);
+                try {
+                    const imagesToSave = this.generatedImages.map(img => ({
+                        url: img.url,
+                        prompt: img.prompt,
+                        timestamp: img.timestamp || Date.now()
+                    }));
+                    localStorage.setItem(this.imageStorageKey, JSON.stringify(imagesToSave));
+                } catch (retryError) {
+                    console.error('[ImageGenerator] Still failed to save images:', retryError);
+                }
+            }
+        }
+    }
+
+    loadImagesFromStorage() {
+        try {
+            console.log('[ImageGenerator] Loading images from localStorage...');
+            const savedImages = localStorage.getItem(this.imageStorageKey);
+            if (savedImages) {
+                const images = JSON.parse(savedImages);
+                console.log('[ImageGenerator] Found', images.length, 'saved images');
+                // Load images into memory; rendering is handled separately (e.g., on DOMContentLoaded)
+                images.forEach(imageData => {
+                    this.generatedImages.push(imageData);
+                });
+            } else {
+                console.log('[ImageGenerator] No saved images found');
+            }
+        } catch (error) {
+            console.error('[ImageGenerator] Failed to load images from localStorage:', error);
+        }
+    }
+
+    restoreImagesToGallery() {
+        console.log('[ImageGenerator] Restoring', this.generatedImages.length, 'images to gallery');
+        const gallery = document.getElementById('imageGallery');
+        if (!gallery) {
+            console.error('[ImageGenerator] Gallery element not found');
+            return;
+        }
+        
+        // Clear gallery first
+        gallery.innerHTML = '';
+        
+        // Restore images in reverse order (newest first)
+        for (let i = this.generatedImages.length - 1; i >= 0; i--) {
+            const imageData = this.generatedImages[i];
+            const imageCard = this.createImageCard(
+                { url: imageData.url }, 
+                imageData.prompt, 
+                i
+            );
+            gallery.appendChild(imageCard);
+        }
     }
 
     setReferenceImage(base64Data) {
@@ -410,6 +484,16 @@ class ImageGenerator {
                         'oil-painting': 'in a classic oil painting style',
                         'sketch': 'as a hand-drawn sketch or pencil drawing',
                         '3d-render': 'as a 3D computer graphics render',
+                        '2d-game-dot-background': 'as a 2D pixel art game background with retro dot graphics',
+                        '2d-game-dot-character': 'as a 2D pixel art game character with retro dot graphics',
+                        'game-illustration': 'in video game concept art illustration style',
+                        'casual-game-illustration': 'in bright and friendly casual game illustration style',
+                        'rpg-game-art': 'in fantasy RPG game art style with detailed characters and environments',
+                        'mobile-game-ui': 'as a mobile game UI element or icon design with clean and vibrant style',
+                        'retro-game-style': 'in retro 8-bit or 16-bit classic video game style',
+                        '3d-game-model': 'as a 3D game model with game-ready textures and lighting',
+                        'game-character-portrait': 'as a game character portrait with detailed facial features',
+                        'game-environment-concept': 'as a game environment concept art for level design',
                         'custom': config.customStyle?.trim() || ''
                     };
                     
@@ -539,8 +623,20 @@ class ImageGenerator {
             gallery.insertBefore(imageCard, gallery.firstChild);
         });
 
-        this.generatedImages.push(...images);
+        // Store images with their prompts and timestamps
+        const timestamp = Date.now();
+        images.forEach(imageData => {
+            this.generatedImages.push({
+                url: imageData.url || (imageData.b64_json ? `data:image/png;base64,${imageData.b64_json}` : ''),
+                prompt: prompt,
+                timestamp: timestamp
+            });
+        });
+        
         console.log(`[ImageGenerator] Total images in history: ${this.generatedImages.length}`);
+        
+        // Save to localStorage
+        this.saveImagesToStorage();
     }
 
     createImageCard(imageData, prompt, index) {
@@ -1044,6 +1140,10 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('[Init] Initializing image generator...');
     const imageGenerator = new ImageGenerator(configManager, usageTracker);
     window.imageGenerator = imageGenerator; // Make it globally accessible for inpaint button
+    
+    // Restore saved images to gallery
+    // The gallery should be ready at this point since we're in DOMContentLoaded
+    imageGenerator.restoreImagesToGallery();
 
     console.log('[Init] Initializing mask editor...');
     const maskEditor = new MaskEditor();
@@ -1063,6 +1163,21 @@ document.addEventListener('DOMContentLoaded', () => {
             customStyleGroup.style.display = 'block';
         } else {
             customStyleGroup.style.display = 'none';
+        }
+        // Auto-save config on style change
+        console.log('[Event] Auto-saving config after style changed');
+        configManager.saveConfig();
+    });
+    
+    // Auto-save configuration on field changes
+    const autoSaveFields = ['apiVersion', 'size', 'quality', 'customStyle', 'numImages'];
+    autoSaveFields.forEach(fieldId => {
+        const element = document.getElementById(fieldId);
+        if (element) {
+            element.addEventListener('change', () => {
+                console.log('[Event] Auto-saving config after', fieldId, 'changed');
+                configManager.saveConfig();
+            });
         }
     });
     
