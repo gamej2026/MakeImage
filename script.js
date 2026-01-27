@@ -1164,10 +1164,13 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             customStyleGroup.style.display = 'none';
         }
+        // Auto-save config on style change
+        console.log('[Event] Auto-saving config after style changed');
+        configManager.saveConfig();
     });
     
     // Auto-save configuration on field changes
-    const autoSaveFields = ['apiVersion', 'size', 'quality', 'style', 'customStyle', 'numImages'];
+    const autoSaveFields = ['apiVersion', 'size', 'quality', 'customStyle', 'numImages'];
     autoSaveFields.forEach(fieldId => {
         const element = document.getElementById(fieldId);
         if (element) {
