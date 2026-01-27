@@ -19,6 +19,7 @@
                         <path d="M3 15L8 10L12 14L17 9L21 13V18C21 19.6569 19.6569 21 18 21H6C4.34315 21 3 19.6569 3 18V15Z" fill="currentColor" opacity="0.5"/>
                     </svg>
                     <span class="usage-count" id="totalUsageCount">0</span>
+                    <span class="usage-unit">images</span>
                 </div>
             </div>
             <div class="logo">
@@ -51,11 +52,7 @@
                     <input type="hidden" id="apiEndpoint">
                     <input type="hidden" id="apiKey">
                     <input type="hidden" id="deploymentName" value="gpt-image-1.5">
-                    <div class="form-group">
-                        <label for="apiVersion">API Version</label>
-                        <input type="text" id="apiVersion" placeholder="2024-02-01" value="2024-02-01">
-                        <span class="helper-text">Azure OpenAI API version</span>
-                    </div>
+                    <input type="hidden" id="apiVersion" value="2025-04-01-preview">
                 </div>
 
                 <!-- Image Generation Parameters -->
@@ -150,9 +147,9 @@
                     <div class="form-group">
                         <label for="quality">Quality</label>
                         <select id="quality">
-                            <option value="auto">Auto</option>
+                            <option value="auto" selected>Auto</option>
                             <option value="low">Low</option>
-                            <option value="medium" selected>Medium</option>
+                            <option value="medium">Medium</option>
                             <option value="high">High</option>
                         </select>
                         <span class="helper-text">Image quality level</span>
