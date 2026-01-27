@@ -163,8 +163,10 @@ Azure OpenAI GPT image 1.5 (DALL-E 3)를 사용하여 이미지를 생성하는 
   - `1024x1792`: 세로형
   
 - `quality` (string): 이미지 품질
-  - `standard`: 표준 품질 (기본값)
-  - `hd`: 고화질
+  - `auto`: 자동 품질 선택 (기본값)
+  - `low`: 낮은 품질
+  - `medium`: 중간 품질
+  - `high`: 높은 품질
   
 - `style` (string): 이미지 스타일
   - `vivid`: 생생하고 극적인 스타일 (기본값)
