@@ -349,14 +349,10 @@ class ImageGenerator {
             if (savedImages) {
                 const images = JSON.parse(savedImages);
                 console.log('[ImageGenerator] Found', images.length, 'saved images');
-                // Restore images to gallery
+                // Load images into memory; rendering is handled separately (e.g., on DOMContentLoaded)
                 images.forEach(imageData => {
                     this.generatedImages.push(imageData);
                 });
-                // Display them after DOM is ready
-                if (document.getElementById('imageGallery')) {
-                    this.restoreImagesToGallery();
-                }
             } else {
                 console.log('[ImageGenerator] No saved images found');
             }
