@@ -21,7 +21,7 @@ Azure OpenAI GPT image 1.5 (DALL-E 3)를 사용하여 이미지를 생성하는 
 - **이미지 생성 파라미터**:
   - 📝 **Prompt**: 상세한 이미지 설명 입력
   - 🖼️ **Generation Mode**: Text-only, Image + Text (참조 이미지), Image Editing (인페인팅)
-  - 📐 **Size**: 1024x1024 (정사각형), 1792x1024 (가로), 1024x1792 (세로)
+  - 📐 **Size**: 1024x1024 (정사각형), 1536x1024 (가로), 1024x1536 (세로)
   - 🎯 **Quality**: Standard, HD (고화질)
   - 🎨 **Style**: Vivid, Natural, Artistic, Photorealistic, Cinematic, Anime, Watercolor, Oil Painting, Sketch, 3D Render, Custom (사용자 정의 스타일)
   - 🔢 **Number of Images**: 1-10개 동시 생성
@@ -159,8 +159,8 @@ Azure OpenAI GPT image 1.5 (DALL-E 3)를 사용하여 이미지를 생성하는 
 ### 선택 파라미터
 - `size` (string): 이미지 크기
   - `1024x1024`: 정사각형 (기본값)
-  - `1792x1024`: 가로형
-  - `1024x1792`: 세로형
+  - `1536x1024`: 가로형
+  - `1024x1536`: 세로형
   
 - `quality` (string): 이미지 품질
   - `auto`: 자동 품질 선택 (기본값)
