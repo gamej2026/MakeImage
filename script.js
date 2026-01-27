@@ -1145,10 +1145,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const imageGenerator = new ImageGenerator(configManager, usageTracker);
     window.imageGenerator = imageGenerator; // Make it globally accessible for inpaint button
     
-    // Restore saved images to gallery after DOM is ready
-    setTimeout(() => {
-        imageGenerator.restoreImagesToGallery();
-    }, 100);
+    // Restore saved images to gallery
+    // The gallery should be ready at this point since we're in DOMContentLoaded
+    imageGenerator.restoreImagesToGallery();
 
     console.log('[Init] Initializing mask editor...');
     const maskEditor = new MaskEditor();
