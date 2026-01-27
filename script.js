@@ -134,6 +134,12 @@ class ConfigManager {
 
 // Mask Editor
 class MaskEditor {
+    // Constants
+    static MASK_COLOR = 'rgba(255, 255, 255, 0.7)';
+    static ERASER_COLOR = 'rgba(0, 0, 0, 1)';
+    static ALPHA_THRESHOLD = 200;
+    static RGBA_PIXEL_SIZE = 4;
+    
     constructor() {
         this.canvas = null;
         this.ctx = null;
@@ -206,12 +212,12 @@ class MaskEditor {
 
         if (this.currentTool === 'brush') {
             // Draw white mask (areas to edit)
-            this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
-            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            this.ctx.strokeStyle = MaskEditor.MASK_COLOR;
+            this.ctx.fillStyle = MaskEditor.MASK_COLOR;
         } else {
             // Erase mask (restore original image)
             this.ctx.globalCompositeOperation = 'destination-out';
-            this.ctx.strokeStyle = 'rgba(0, 0, 0, 1)';
+            this.ctx.strokeStyle = MaskEditor.ERASER_COLOR;
         }
 
         this.ctx.lineTo(x, y);
@@ -256,10 +262,10 @@ class MaskEditor {
         const maskImageData = maskCtx.createImageData(maskCanvas.width, maskCanvas.height);
         const maskData = maskImageData.data;
 
-        for (let i = 0; i < data.length; i += 4) {
+        for (let i = 0; i < data.length; i += MaskEditor.RGBA_PIXEL_SIZE) {
             const alpha = data[i + 3];
             // If pixel has been drawn over (mask applied), make it white
-            if (alpha > 200) {
+            if (alpha > MaskEditor.ALPHA_THRESHOLD) {
                 maskData[i] = 255;     // R
                 maskData[i + 1] = 255; // G
                 maskData[i + 2] = 255; // B
