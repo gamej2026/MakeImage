@@ -132,6 +132,168 @@ class ConfigManager {
     }
 }
 
+// Mask Editor
+class MaskEditor {
+    constructor() {
+        this.canvas = null;
+        this.ctx = null;
+        this.isDrawing = false;
+        this.currentTool = 'brush'; // 'brush' or 'eraser'
+        this.brushSize = 20;
+        this.baseImage = null;
+        this.maskData = null;
+        console.log('[MaskEditor] Initialized');
+    }
+
+    setupCanvas(imageElement) {
+        console.log('[MaskEditor] Setting up canvas with image');
+        this.canvas = document.getElementById('maskCanvas');
+        this.ctx = this.canvas.getContext('2d');
+
+        // Load base image
+        this.baseImage = new Image();
+        this.baseImage.onload = () => {
+            // Set canvas size to match image
+            this.canvas.width = this.baseImage.width;
+            this.canvas.height = this.baseImage.height;
+            
+            // Draw base image
+            this.ctx.drawImage(this.baseImage, 0, 0);
+            
+            // Initialize mask layer (transparent)
+            this.maskData = this.ctx.createImageData(this.canvas.width, this.canvas.height);
+            
+            console.log('[MaskEditor] Canvas setup complete:', {
+                width: this.canvas.width,
+                height: this.canvas.height
+            });
+        };
+        this.baseImage.src = imageElement.src;
+    }
+
+    setTool(tool) {
+        console.log('[MaskEditor] Tool changed to:', tool);
+        this.currentTool = tool;
+    }
+
+    setBrushSize(size) {
+        this.brushSize = size;
+        console.log('[MaskEditor] Brush size changed to:', size);
+    }
+
+    startDrawing(e) {
+        this.isDrawing = true;
+        this.draw(e);
+    }
+
+    stopDrawing() {
+        this.isDrawing = false;
+        this.ctx.beginPath(); // Reset path
+    }
+
+    draw(e) {
+        if (!this.isDrawing) return;
+
+        const rect = this.canvas.getBoundingClientRect();
+        const scaleX = this.canvas.width / rect.width;
+        const scaleY = this.canvas.height / rect.height;
+        const x = (e.clientX - rect.left) * scaleX;
+        const y = (e.clientY - rect.top) * scaleY;
+
+        this.ctx.lineWidth = this.brushSize;
+        this.ctx.lineCap = 'round';
+        this.ctx.lineJoin = 'round';
+
+        if (this.currentTool === 'brush') {
+            // Draw white mask (areas to edit)
+            this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        } else {
+            // Erase mask (restore original image)
+            this.ctx.globalCompositeOperation = 'destination-out';
+            this.ctx.strokeStyle = 'rgba(0, 0, 0, 1)';
+        }
+
+        this.ctx.lineTo(x, y);
+        this.ctx.stroke();
+        this.ctx.beginPath();
+        this.ctx.arc(x, y, this.brushSize / 2, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.beginPath();
+        this.ctx.moveTo(x, y);
+
+        // Reset composite operation
+        if (this.currentTool === 'eraser') {
+            this.ctx.globalCompositeOperation = 'source-over';
+        }
+    }
+
+    clearMask() {
+        console.log('[MaskEditor] Clearing mask');
+        if (this.baseImage) {
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            this.ctx.drawImage(this.baseImage, 0, 0);
+        }
+    }
+
+    getMaskDataURL() {
+        console.log('[MaskEditor] Extracting mask data');
+        // Create a new canvas for the mask only
+        const maskCanvas = document.createElement('canvas');
+        maskCanvas.width = this.canvas.width;
+        maskCanvas.height = this.canvas.height;
+        const maskCtx = maskCanvas.getContext('2d');
+
+        // Fill with black background
+        maskCtx.fillStyle = 'black';
+        maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
+
+        // Get current canvas data
+        const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+        const data = imageData.data;
+
+        // Create mask: white where drawn, transparent elsewhere
+        const maskImageData = maskCtx.createImageData(maskCanvas.width, maskCanvas.height);
+        const maskData = maskImageData.data;
+
+        for (let i = 0; i < data.length; i += 4) {
+            const alpha = data[i + 3];
+            // If pixel has been drawn over (mask applied), make it white
+            if (alpha > 200) {
+                maskData[i] = 255;     // R
+                maskData[i + 1] = 255; // G
+                maskData[i + 2] = 255; // B
+                maskData[i + 3] = 255; // A
+            } else {
+                // Keep black (no edit)
+                maskData[i] = 0;
+                maskData[i + 1] = 0;
+                maskData[i + 2] = 0;
+                maskData[i + 3] = 255;
+            }
+        }
+
+        maskCtx.putImageData(maskImageData, 0, 0);
+        const maskDataURL = maskCanvas.toDataURL('image/png');
+        console.log('[MaskEditor] Mask data URL generated');
+        return maskDataURL;
+    }
+
+    getBaseImageDataURL() {
+        console.log('[MaskEditor] Getting base image data URL');
+        // Return the original image without mask overlay
+        if (this.baseImage) {
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = this.baseImage.width;
+            tempCanvas.height = this.baseImage.height;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.drawImage(this.baseImage, 0, 0);
+            return tempCanvas.toDataURL('image/png');
+        }
+        return null;
+    }
+}
+
 // Image Generator
 class ImageGenerator {
     constructor(configManager, usageTracker) {
@@ -171,77 +333,127 @@ class ImageGenerator {
         hideStatus();
 
         try {
-            // Build the Azure OpenAI API URL
+            // Determine API endpoint based on mode
             const endpoint = config.apiEndpoint.replace(/\/$/, ''); // Remove trailing slash
-            const url = `${endpoint}/openai/deployments/${config.deploymentName}/images/generations?api-version=${config.apiVersion}`;
+            let url, requestBody, fetchOptions;
             
-            console.log('[ImageGenerator] Step 3: Building API request...');
-            console.log('[ImageGenerator] API Endpoint:', url);
-
-            // Build the prompt with style enhancements
-            let enhancedPrompt = config.prompt.trim();
-            let apiStyle = config.style;
-            
-            // Azure OpenAI only supports 'vivid' and 'natural' styles directly
-            // For other styles, we enhance the prompt with style descriptions
-            if (config.style !== 'vivid' && config.style !== 'natural') {
-                const styleDescriptions = {
-                    'artistic': 'in an artistic and painterly style',
-                    'photorealistic': 'in a photorealistic style, like a high-quality photograph',
-                    'cinematic': 'in a cinematic style with dramatic lighting and composition',
-                    'anime': 'in anime style, Japanese animation art',
-                    'watercolor': 'in a soft watercolor painting style',
-                    'oil-painting': 'in a classic oil painting style',
-                    'sketch': 'as a hand-drawn sketch or pencil drawing',
-                    '3d-render': 'as a 3D computer graphics render',
-                    'custom': config.customStyle?.trim() || ''
-                };
+            if (config.generationMode === 'image-edit') {
+                // Image editing mode - use /images/edits endpoint
+                console.log('[ImageGenerator] Step 3: Building image editing API request...');
+                url = `${endpoint}/openai/deployments/${config.deploymentName}/images/edits?api-version=${config.apiVersion}`;
+                console.log('[ImageGenerator] API Endpoint (Edit):', url);
                 
-                const styleDesc = (styleDescriptions[config.style] || '').trim();
-                if (styleDesc) {
-                    enhancedPrompt = `${enhancedPrompt} ${styleDesc}`;
-                    console.log('[ImageGenerator] Enhanced prompt with style:', styleDesc);
+                // Get mask and base image from mask editor
+                const maskEditor = window.maskEditor;
+                if (!maskEditor || !maskEditor.baseImage) {
+                    throw new Error('Please upload an image and create a mask before editing');
                 }
-                // Default to 'vivid' for custom styles to get better results
-                apiStyle = 'vivid';
+                
+                const baseImageDataURL = maskEditor.getBaseImageDataURL();
+                const maskDataURL = maskEditor.getMaskDataURL();
+                
+                if (!baseImageDataURL || !maskDataURL) {
+                    throw new Error('Failed to extract image or mask data');
+                }
+                
+                // Convert data URLs to blobs
+                const imageBlob = await dataURLToBlob(baseImageDataURL);
+                const maskBlob = await dataURLToBlob(maskDataURL);
+                
+                // Build FormData for multipart request
+                const formData = new FormData();
+                formData.append('image', imageBlob, 'image.png');
+                formData.append('mask', maskBlob, 'mask.png');
+                formData.append('prompt', config.prompt.trim());
+                formData.append('n', config.n.toString());
+                formData.append('size', config.size);
+                
+                console.log('[ImageGenerator] Editing request prepared:', {
+                    prompt: config.prompt.substring(0, 100) + (config.prompt.length > 100 ? '...' : ''),
+                    size: config.size,
+                    n: config.n
+                });
+                
+                fetchOptions = {
+                    method: 'POST',
+                    headers: {
+                        'api-key': config.apiKey
+                    },
+                    body: formData
+                };
+            } else {
+                // Image generation mode - use /images/generations endpoint
+                console.log('[ImageGenerator] Step 3: Building image generation API request...');
+                url = `${endpoint}/openai/deployments/${config.deploymentName}/images/generations?api-version=${config.apiVersion}`;
+                console.log('[ImageGenerator] API Endpoint (Generation):', url);
+
+                // Build the prompt with style enhancements
+                let enhancedPrompt = config.prompt.trim();
+                let apiStyle = config.style;
+                
+                // Azure OpenAI only supports 'vivid' and 'natural' styles directly
+                // For other styles, we enhance the prompt with style descriptions
+                if (config.style !== 'vivid' && config.style !== 'natural') {
+                    const styleDescriptions = {
+                        'artistic': 'in an artistic and painterly style',
+                        'photorealistic': 'in a photorealistic style, like a high-quality photograph',
+                        'cinematic': 'in a cinematic style with dramatic lighting and composition',
+                        'anime': 'in anime style, Japanese animation art',
+                        'watercolor': 'in a soft watercolor painting style',
+                        'oil-painting': 'in a classic oil painting style',
+                        'sketch': 'as a hand-drawn sketch or pencil drawing',
+                        '3d-render': 'as a 3D computer graphics render',
+                        'custom': config.customStyle?.trim() || ''
+                    };
+                    
+                    const styleDesc = (styleDescriptions[config.style] || '').trim();
+                    if (styleDesc) {
+                        enhancedPrompt = `${enhancedPrompt} ${styleDesc}`;
+                        console.log('[ImageGenerator] Enhanced prompt with style:', styleDesc);
+                    }
+                    // Default to 'vivid' for custom styles to get better results
+                    apiStyle = 'vivid';
+                }
+
+                // Prepare request body according to Azure OpenAI API specs
+                requestBody = {
+                    prompt: enhancedPrompt,
+                    size: config.size,
+                    n: config.n,
+                    quality: config.quality,
+                    style: apiStyle
+                };
+
+                // Add reference image context if in image+text mode
+                if (config.generationMode === 'image-with-text' && this.referenceImageBase64) {
+                    console.log('[ImageGenerator] Reference image uploaded - enhancing prompt with context');
+                    console.log('[ImageGenerator] Note: Azure DALL-E 3 API does not accept image input directly');
+                    console.log('[ImageGenerator] The uploaded image serves as visual reference for prompt creation');
+                    // Note: Azure DALL-E 3 doesn't support direct image input in API,
+                    // The reference image is stored for user reference but not sent to API
+                    requestBody.prompt = `${requestBody.prompt} (Style reference: uploaded image)`;
+                }
+
+                console.log('[ImageGenerator] Request body:', {
+                    ...requestBody,
+                    prompt: requestBody.prompt.substring(0, 100) + (requestBody.prompt.length > 100 ? '...' : '')
+                });
+                
+                fetchOptions = {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'api-key': config.apiKey
+                    },
+                    body: JSON.stringify(requestBody)
+                };
             }
-
-            // Prepare request body according to Azure OpenAI API specs
-            const requestBody = {
-                prompt: enhancedPrompt,
-                size: config.size,
-                n: config.n,
-                quality: config.quality,
-                style: apiStyle
-            };
-
-            // Add reference image context if in image+text mode
-            if (config.generationMode === 'image-with-text' && this.referenceImageBase64) {
-                console.log('[ImageGenerator] Reference image uploaded - enhancing prompt with context');
-                console.log('[ImageGenerator] Note: Azure DALL-E 3 API does not accept image input directly');
-                console.log('[ImageGenerator] The uploaded image serves as visual reference for prompt creation');
-                // Note: Azure DALL-E 3 doesn't support direct image input in API,
-                // The reference image is stored for user reference but not sent to API
-                requestBody.prompt = `${requestBody.prompt} (Style reference: uploaded image)`;
-            }
-
-            console.log('[ImageGenerator] Request body:', {
-                ...requestBody,
-                prompt: requestBody.prompt.substring(0, 100) + (requestBody.prompt.length > 100 ? '...' : '')
-            });
 
             // Make API call
             console.log('[ImageGenerator] Step 4: Sending API request to Azure OpenAI...');
             const startTime = Date.now();
             
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'api-key': config.apiKey
-                },
-                body: JSON.stringify(requestBody)
-            });
+            const response = await fetch(url, fetchOptions);
 
             const responseTime = Date.now() - startTime;
             console.log(`[ImageGenerator] API response received in ${responseTime}ms`);
@@ -493,27 +705,46 @@ function copyToClipboard(text) {
 }
 
 // Image upload handler
-function setupImageUpload(imageGenerator) {
+function setupImageUpload(imageGenerator, maskEditor) {
     console.log('[ImageUpload] Setting up image upload handlers...');
     
     const generationModeSelect = document.getElementById('generationMode');
     const imageUploadGroup = document.getElementById('imageUploadGroup');
+    const maskEditorGroup = document.getElementById('maskEditorGroup');
     const uploadImageBtn = document.getElementById('uploadImageBtn');
     const referenceImageInput = document.getElementById('referenceImage');
     const imagePreview = document.getElementById('imagePreview');
     const previewImg = document.getElementById('previewImg');
     const removeImageBtn = document.getElementById('removeImageBtn');
     const promptHelperText = document.getElementById('promptHelperText');
+    const imageUploadLabel = document.getElementById('imageUploadLabel');
+    const imageUploadHelperText = document.getElementById('imageUploadHelperText');
+    const infoNote = document.getElementById('infoNote');
 
     // Toggle image upload visibility based on mode
     generationModeSelect.addEventListener('change', (e) => {
         console.log('[ImageUpload] Generation mode changed to:', e.target.value);
-        if (e.target.value === 'image-with-text') {
+        const mode = e.target.value;
+        
+        if (mode === 'image-with-text') {
             imageUploadGroup.style.display = 'block';
+            maskEditorGroup.style.display = 'none';
+            imageUploadLabel.textContent = 'Reference Image';
+            imageUploadHelperText.textContent = 'Upload a reference image for visual context (not directly processed by API)';
             promptHelperText.textContent = 'Describe modifications or style to apply to the reference image';
+            infoNote.style.display = 'block';
+        } else if (mode === 'image-edit') {
+            imageUploadGroup.style.display = 'block';
+            maskEditorGroup.style.display = 'none'; // Show after image upload
+            imageUploadLabel.textContent = 'Image to Edit';
+            imageUploadHelperText.textContent = 'Upload an image to edit with inpainting';
+            promptHelperText.textContent = 'Describe what you want in the edited/masked areas';
+            infoNote.style.display = 'none';
         } else {
             imageUploadGroup.style.display = 'none';
+            maskEditorGroup.style.display = 'none';
             promptHelperText.textContent = 'Detailed description of the image';
+            infoNote.style.display = 'none';
             // Clear reference image
             imageGenerator.clearReferenceImage();
             imagePreview.style.display = 'none';
@@ -553,8 +784,17 @@ function setupImageUpload(imageGenerator) {
             imagePreview.style.display = 'block';
             uploadImageBtn.style.display = 'none';
             
-            console.log('[ImageUpload] ✓ Image loaded and preview displayed');
-            showStatus('Reference image loaded successfully!', 'success');
+            // If in edit mode, setup mask editor
+            const mode = generationModeSelect.value;
+            if (mode === 'image-edit') {
+                console.log('[ImageUpload] Setting up mask editor for editing mode');
+                maskEditorGroup.style.display = 'block';
+                maskEditor.setupCanvas(previewImg);
+                showStatus('Image loaded! Draw a mask on the areas you want to edit.', 'success');
+            } else {
+                console.log('[ImageUpload] ✓ Image loaded and preview displayed');
+                showStatus('Reference image loaded successfully!', 'success');
+            }
         } catch (error) {
             console.error('[ImageUpload] ✗ Error loading image:', error);
             showStatus('Failed to load image', 'error');
@@ -567,6 +807,7 @@ function setupImageUpload(imageGenerator) {
         imageGenerator.clearReferenceImage();
         imagePreview.style.display = 'none';
         uploadImageBtn.style.display = 'inline-flex';
+        maskEditorGroup.style.display = 'none';
         referenceImageInput.value = '';
         console.log('[ImageUpload] Reference image removed');
     });
@@ -580,6 +821,100 @@ function fileToBase64(file) {
         reader.onerror = reject;
         reader.readAsDataURL(file);
     });
+}
+
+// Convert data URL to Blob
+function dataURLToBlob(dataURL) {
+    return new Promise((resolve, reject) => {
+        try {
+            const arr = dataURL.split(',');
+            const mime = arr[0].match(/:(.*?);/)[1];
+            const bstr = atob(arr[1]);
+            let n = bstr.length;
+            const u8arr = new Uint8Array(n);
+            while (n--) {
+                u8arr[n] = bstr.charCodeAt(n);
+            }
+            resolve(new Blob([u8arr], { type: mime }));
+        } catch (error) {
+            reject(error);
+        }
+    });
+}
+
+// Setup mask editor controls
+function setupMaskEditor(maskEditor) {
+    console.log('[MaskEditor] Setting up mask editor controls...');
+    
+    const canvas = document.getElementById('maskCanvas');
+    const brushModeBtn = document.getElementById('brushModeBtn');
+    const eraseModeBtn = document.getElementById('eraseModeBtn');
+    const brushSizeInput = document.getElementById('brushSize');
+    const brushSizeValue = document.getElementById('brushSizeValue');
+    const clearMaskBtn = document.getElementById('clearMaskBtn');
+    
+    // Tool selection
+    brushModeBtn.addEventListener('click', () => {
+        maskEditor.setTool('brush');
+        brushModeBtn.classList.add('active');
+        eraseModeBtn.classList.remove('active');
+        console.log('[MaskEditor] Brush mode activated');
+    });
+    
+    eraseModeBtn.addEventListener('click', () => {
+        maskEditor.setTool('eraser');
+        eraseModeBtn.classList.add('active');
+        brushModeBtn.classList.remove('active');
+        console.log('[MaskEditor] Eraser mode activated');
+    });
+    
+    // Brush size
+    brushSizeInput.addEventListener('input', (e) => {
+        const size = parseInt(e.target.value);
+        maskEditor.setBrushSize(size);
+        brushSizeValue.textContent = size;
+    });
+    
+    // Clear mask
+    clearMaskBtn.addEventListener('click', () => {
+        maskEditor.clearMask();
+        showStatus('Mask cleared', 'info');
+    });
+    
+    // Canvas drawing events
+    canvas.addEventListener('mousedown', (e) => maskEditor.startDrawing(e));
+    canvas.addEventListener('mousemove', (e) => maskEditor.draw(e));
+    canvas.addEventListener('mouseup', () => maskEditor.stopDrawing());
+    canvas.addEventListener('mouseleave', () => maskEditor.stopDrawing());
+    
+    // Touch support for mobile
+    canvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const mouseEvent = new MouseEvent('mousedown', {
+            clientX: touch.clientX,
+            clientY: touch.clientY
+        });
+        canvas.dispatchEvent(mouseEvent);
+    });
+    
+    canvas.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const mouseEvent = new MouseEvent('mousemove', {
+            clientX: touch.clientX,
+            clientY: touch.clientY
+        });
+        canvas.dispatchEvent(mouseEvent);
+    });
+    
+    canvas.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        const mouseEvent = new MouseEvent('mouseup', {});
+        canvas.dispatchEvent(mouseEvent);
+    });
+    
+    console.log('[MaskEditor] Mask editor controls setup complete');
 }
 
 // Initialize application
@@ -599,8 +934,13 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('[Init] Initializing image generator...');
     const imageGenerator = new ImageGenerator(configManager, usageTracker);
 
+    console.log('[Init] Initializing mask editor...');
+    const maskEditor = new MaskEditor();
+    window.maskEditor = maskEditor; // Make it globally accessible
+    setupMaskEditor(maskEditor);
+
     console.log('[Init] Setting up image upload functionality...');
-    setupImageUpload(imageGenerator);
+    setupImageUpload(imageGenerator, maskEditor);
 
     console.log('[Init] Attaching event listeners...');
     

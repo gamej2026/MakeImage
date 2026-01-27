@@ -67,12 +67,13 @@
                         <select id="generationMode">
                             <option value="text-only">Text to Image</option>
                             <option value="image-with-text">Image + Text (Reference Image)</option>
+                            <option value="image-edit">Image Editing (Inpainting)</option>
                         </select>
                         <span class="helper-text">Choose generation mode</span>
                     </div>
 
                     <div class="form-group" id="imageUploadGroup" style="display: none;">
-                        <label for="referenceImage">Reference Image</label>
+                        <label for="referenceImage" id="imageUploadLabel">Reference Image</label>
                         <div class="image-upload-container">
                             <input type="file" id="referenceImage" accept="image/*" style="display: none;">
                             <button type="button" id="uploadImageBtn" class="btn-upload">
@@ -87,14 +88,51 @@
                                 <button type="button" id="removeImageBtn" class="btn-remove">×</button>
                             </div>
                         </div>
-                        <span class="helper-text">Upload a reference image for visual context (not directly processed by API)</span>
+                        <span class="helper-text" id="imageUploadHelperText">Upload a reference image for visual context (not directly processed by API)</span>
+                    </div>
+
+                    <!-- Mask Editor for Image Editing Mode -->
+                    <div class="form-group" id="maskEditorGroup" style="display: none;">
+                        <label for="maskEditor">Mask Editor</label>
+                        <div class="mask-editor-container">
+                            <div class="mask-editor-toolbar">
+                                <button type="button" id="brushModeBtn" class="tool-btn active">
+                                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                        <circle cx="6" cy="14" r="4" stroke="currentColor" stroke-width="2"/>
+                                        <path d="M9 11L16 4L18 6L11 13" stroke="currentColor" stroke-width="2"/>
+                                    </svg>
+                                    Brush
+                                </button>
+                                <button type="button" id="eraseModeBtn" class="tool-btn">
+                                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                        <path d="M12 3L17 8L9 16L4 16L4 11L12 3Z" stroke="currentColor" stroke-width="2"/>
+                                    </svg>
+                                    Eraser
+                                </button>
+                                <div class="brush-size-control">
+                                    <label for="brushSize">Size:</label>
+                                    <input type="range" id="brushSize" min="5" max="50" value="20">
+                                    <span id="brushSizeValue">20</span>
+                                </div>
+                                <button type="button" id="clearMaskBtn" class="tool-btn">
+                                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                        <path d="M4 4L16 16M16 4L4 16" stroke="currentColor" stroke-width="2"/>
+                                    </svg>
+                                    Clear
+                                </button>
+                            </div>
+                            <div class="canvas-container">
+                                <canvas id="maskCanvas"></canvas>
+                            </div>
+                        </div>
+                        <span class="helper-text">Draw on the areas you want to edit/replace (masked areas will be regenerated)</span>
                     </div>
 
                     <div class="form-group">
                         <label for="prompt">Prompt</label>
                         <textarea id="prompt" rows="4" placeholder="Describe the image you want to generate..."></textarea>
                         <span class="helper-text" id="promptHelperText">Detailed description of the image</span>
-                        <div class="info-note" style="margin-top: 0.5rem; padding: 0.75rem; background: rgba(79, 172, 254, 0.1); border: 1px solid rgba(79, 172, 254, 0.3); border-radius: 8px; font-size: 0.85rem; color: #4facfe;">
+                        <div class="info-note" id="infoNote" style="margin-top: 0.5rem; padding: 0.75rem; background: rgba(79, 172, 254, 0.1); border: 1px solid rgba(79, 172, 254, 0.3); border-radius: 8px; font-size: 0.85rem; color: #4facfe; display: none;">
                             <strong>Note:</strong> Azure DALL-E 3 does not support direct image input. The reference image helps you visualize what you want and craft a better prompt.
                         </div>
                     </div>
