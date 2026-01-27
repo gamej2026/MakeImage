@@ -422,6 +422,17 @@ body {
     border-color: var(--accent-color);
 }
 
+.image-card-actions button.btn-inpaint {
+    background: rgba(102, 126, 234, 0.1);
+    border-color: rgba(102, 126, 234, 0.3);
+}
+
+.image-card-actions button.btn-inpaint:hover {
+    background: rgba(102, 126, 234, 0.2);
+    border-color: var(--accent-color);
+    transform: translateY(-1px);
+}
+
 /* Footer */
 .footer {
     margin-top: 4rem;
