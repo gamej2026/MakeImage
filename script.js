@@ -597,8 +597,24 @@ class ImageGenerator {
             copyToClipboard(prompt);
         });
 
+        // Edit in Inpaint button
+        const inpaintBtn = document.createElement('button');
+        inpaintBtn.className = 'btn-inpaint';
+        inpaintBtn.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M2 14L5 11L9 15L14 10L12 8L7 13L3 9L1 11L2 14Z" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                <circle cx="12" cy="4" r="3" stroke="currentColor" stroke-width="1.5" fill="none"/>
+            </svg>
+            Edit in Inpaint
+        `;
+        inpaintBtn.addEventListener('click', () => {
+            console.log(`[ImageGenerator] Edit in Inpaint button clicked for image ${index + 1}`);
+            switchToInpaintMode(this.sanitizeUrl(imageUrl));
+        });
+
         actionsDiv.appendChild(downloadBtn);
         actionsDiv.appendChild(copyBtn);
+        actionsDiv.appendChild(inpaintBtn);
         infoDiv.appendChild(promptP);
         infoDiv.appendChild(actionsDiv);
         card.appendChild(img);
@@ -724,6 +740,71 @@ function copyToClipboard(text) {
             console.error('[Clipboard] ✗ Failed to copy:', err);
             showStatus('Failed to copy prompt', 'error');
         });
+}
+
+// Switch to inpaint mode with loaded image
+async function switchToInpaintMode(imageUrl) {
+    console.log('[InpaintMode] Switching to inpaint mode with image:', imageUrl.substring(0, 50) + '...');
+    
+    try {
+        // Get DOM elements
+        const generationModeSelect = document.getElementById('generationMode');
+        const imageUploadGroup = document.getElementById('imageUploadGroup');
+        const maskEditorGroup = document.getElementById('maskEditorGroup');
+        const imagePreview = document.getElementById('imagePreview');
+        const previewImg = document.getElementById('previewImg');
+        const uploadImageBtn = document.getElementById('uploadImageBtn');
+        const promptTextarea = document.getElementById('prompt');
+        
+        // Switch to image-edit mode
+        console.log('[InpaintMode] Changing generation mode to image-edit');
+        generationModeSelect.value = 'image-edit';
+        
+        // Trigger the change event to update UI
+        generationModeSelect.dispatchEvent(new Event('change'));
+        
+        // Load the image
+        console.log('[InpaintMode] Loading image into editor');
+        
+        // Convert URL to base64 if needed
+        let base64Image = imageUrl;
+        if (!imageUrl.startsWith('data:')) {
+            // If it's a remote URL, fetch and convert to base64
+            console.log('[InpaintMode] Converting remote URL to base64...');
+            const response = await fetch(imageUrl);
+            const blob = await response.blob();
+            base64Image = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        }
+        
+        // Set the reference image in imageGenerator
+        window.imageGenerator.setReferenceImage(base64Image);
+        
+        // Show preview
+        previewImg.src = base64Image;
+        imagePreview.style.display = 'block';
+        uploadImageBtn.style.display = 'none';
+        
+        // Setup mask editor
+        maskEditorGroup.style.display = 'block';
+        window.maskEditor.setupCanvas(previewImg);
+        
+        // Clear the prompt
+        promptTextarea.value = '';
+        
+        // Scroll to the configuration panel
+        document.querySelector('.config-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        
+        console.log('[InpaintMode] ✓ Successfully switched to inpaint mode');
+        showStatus('Image loaded in inpaint mode! Draw a mask on areas you want to edit.', 'success');
+    } catch (error) {
+        console.error('[InpaintMode] ✗ Failed to switch to inpaint mode:', error);
+        showStatus('Failed to load image in inpaint mode', 'error');
+    }
 }
 
 // Image upload handler
@@ -955,6 +1036,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     console.log('[Init] Initializing image generator...');
     const imageGenerator = new ImageGenerator(configManager, usageTracker);
+    window.imageGenerator = imageGenerator; // Make it globally accessible for inpaint button
 
     console.log('[Init] Initializing mask editor...');
     const maskEditor = new MaskEditor();
