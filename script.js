@@ -607,9 +607,10 @@ class ImageGenerator {
             </svg>
             Edit in Inpaint
         `;
+        const sanitizedUrl = this.sanitizeUrl(imageUrl);
         inpaintBtn.addEventListener('click', () => {
             console.log(`[ImageGenerator] Edit in Inpaint button clicked for image ${index + 1}`);
-            switchToInpaintMode(this.sanitizeUrl(imageUrl));
+            switchToInpaintMode(sanitizedUrl);
         });
 
         actionsDiv.appendChild(downloadBtn);
@@ -772,7 +773,13 @@ async function switchToInpaintMode(imageUrl) {
             // If it's a remote URL, fetch and convert to base64
             console.log('[InpaintMode] Converting remote URL to base64...');
             const response = await fetch(imageUrl);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+            }
             const blob = await response.blob();
+            if (!blob.type.startsWith('image/')) {
+                throw new Error(`Invalid image type: ${blob.type}`);
+            }
             base64Image = await new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = () => resolve(reader.result);
