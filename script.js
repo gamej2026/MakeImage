@@ -107,8 +107,9 @@ class ConfigManager {
             throw new Error('Azure OpenAI Endpoint is required');
         }
         // Validate Azure OpenAI endpoint format
-        if (!config.apiEndpoint.match(/^https:\/\/[a-zA-Z0-9-]+\.openai\.azure\.com\/?$/)) {
-            throw new Error('Invalid Azure OpenAI Endpoint format. Expected: https://your-resource.openai.azure.com');
+        // Support both .openai.azure.com and .cognitiveservices.azure.com endpoints
+        if (!config.apiEndpoint.match(/^https:\/\/[a-zA-Z0-9-]+\.(openai\.azure\.com|cognitiveservices\.azure\.com)\/?$/)) {
+            throw new Error('Invalid Azure OpenAI Endpoint format. Expected: https://your-resource.openai.azure.com or https://your-resource.cognitiveservices.azure.com');
         }
         if (!config.apiKey) {
             throw new Error('API Key is required');
