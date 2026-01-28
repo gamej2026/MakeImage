@@ -130,13 +130,13 @@
                         <textarea id="prompt" rows="4" placeholder="Describe the image you want to generate..."></textarea>
                         <span class="helper-text" id="promptHelperText">Detailed description of the image</span>
                         <div class="prompt-actions" style="margin-top: 0.75rem; display: flex; gap: 0.5rem;">
-                            <button type="button" id="addPromptBtn" class="btn-secondary" style="flex: 1;">
+                            <button type="button" id="addPromptBtn" class="btn-secondary" style="flex: 1;" aria-label="Add prompt to queue">
                                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                                     <path d="M8 3V13M3 8H13" stroke="currentColor" stroke-width="2"/>
                                 </svg>
                                 Add to Queue
                             </button>
-                            <button type="button" id="clearQueueBtn" class="btn-secondary" style="flex: 1;">
+                            <button type="button" id="clearQueueBtn" class="btn-secondary" style="flex: 1;" aria-label="Clear all prompts from queue">
                                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                                     <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" stroke-width="2"/>
                                 </svg>
@@ -151,7 +151,7 @@
                     <!-- Prompt Queue -->
                     <div class="form-group" id="promptQueueGroup" style="display: none;">
                         <label>Prompt Queue (<span id="queueCount">0</span>)</label>
-                        <div id="promptQueue" class="prompt-queue"></div>
+                        <div id="promptQueue" class="prompt-queue" role="list" aria-label="Queue of prompts"></div>
                         <span class="helper-text">Click Generate to process all queued prompts</span>
                     </div>
 

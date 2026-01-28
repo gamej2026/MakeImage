@@ -135,9 +135,13 @@ class ConfigManager {
 
 // Prompt Queue Manager
 class PromptQueue {
+    static MAX_QUEUE_SIZE = 50;
+    static BATCH_REQUEST_DELAY_MS = 1000;
+    
     constructor() {
         this.prompts = [];
         this.storageKey = 'promptQueue';
+        this.handleRemoveClick = null;
         this.loadQueue();
         console.log('[PromptQueue] Initialized with', this.prompts.length, 'prompts');
     }
@@ -147,6 +151,12 @@ class PromptQueue {
             console.warn('[PromptQueue] Cannot add empty prompt');
             return false;
         }
+        
+        if (this.prompts.length >= PromptQueue.MAX_QUEUE_SIZE) {
+            console.warn('[PromptQueue] Queue is full, maximum size is', PromptQueue.MAX_QUEUE_SIZE);
+            return false;
+        }
+        
         this.prompts.push(prompt.trim());
         this.saveQueue();
         this.updateUI();
@@ -194,8 +204,15 @@ class PromptQueue {
         try {
             const saved = localStorage.getItem(this.storageKey);
             if (saved) {
-                this.prompts = JSON.parse(saved);
-                console.log('[PromptQueue] Loaded', this.prompts.length, 'prompts from storage');
+                const parsed = JSON.parse(saved);
+                // Validate that we got an array of strings
+                if (Array.isArray(parsed)) {
+                    this.prompts = parsed.filter(item => typeof item === 'string' && item.trim().length > 0);
+                    console.log('[PromptQueue] Loaded', this.prompts.length, 'prompts from storage');
+                } else {
+                    console.warn('[PromptQueue] Invalid queue data format, starting with empty queue');
+                    this.prompts = [];
+                }
             }
         } catch (error) {
             console.error('[PromptQueue] Failed to load queue:', error);
@@ -224,6 +241,7 @@ class PromptQueue {
             this.prompts.forEach((prompt, index) => {
                 const item = document.createElement('div');
                 item.className = 'prompt-queue-item';
+                item.setAttribute('role', 'listitem');
                 
                 const number = document.createElement('div');
                 number.className = 'prompt-queue-number';
@@ -234,18 +252,28 @@ class PromptQueue {
                 text.textContent = prompt;
                 text.title = prompt; // Show full text on hover
                 
-                const removeBtn = document.createElement('div');
+                const removeBtn = document.createElement('button');
                 removeBtn.className = 'prompt-queue-remove';
                 removeBtn.innerHTML = '×';
-                removeBtn.addEventListener('click', () => {
-                    this.removePrompt(index);
-                });
+                removeBtn.setAttribute('aria-label', `Remove prompt ${index + 1} from queue`);
+                removeBtn.setAttribute('type', 'button');
+                removeBtn.dataset.index = index;
                 
                 item.appendChild(number);
                 item.appendChild(text);
                 item.appendChild(removeBtn);
                 queueContainer.appendChild(item);
             });
+            
+            // Use event delegation for remove buttons
+            queueContainer.removeEventListener('click', this.handleRemoveClick);
+            this.handleRemoveClick = (e) => {
+                if (e.target.classList.contains('prompt-queue-remove')) {
+                    const index = parseInt(e.target.dataset.index);
+                    this.removePrompt(index);
+                }
+            };
+            queueContainer.addEventListener('click', this.handleRemoveClick);
         } else {
             queueGroup.style.display = 'none';
         }
@@ -746,6 +774,11 @@ class ImageGenerator {
         // Show loading state
         showLoading(true);
         hideStatus();
+        
+        // Disable prompt input during batch generation
+        const promptTextarea = document.getElementById('prompt');
+        const originalDisabledState = promptTextarea.disabled;
+        promptTextarea.disabled = true;
 
         let successCount = 0;
         let failCount = 0;
@@ -753,28 +786,33 @@ class ImageGenerator {
         try {
             for (let i = 0; i < prompts.length; i++) {
                 const prompt = prompts[i];
-                console.log(`[ImageGenerator] Processing prompt ${i + 1}/${prompts.length}:`, prompt.substring(0, 50) + '...');
+                const promptPreview = prompt.length > 50 ? prompt.substring(0, 50) + '...' : prompt;
+                console.log(`[ImageGenerator] Processing prompt ${i + 1}/${prompts.length}:`, promptPreview);
                 
                 // Update status to show progress
                 showStatus(`Generating images for prompt ${i + 1}/${prompts.length}...`, 'info');
                 
                 try {
-                    // Temporarily set the prompt in the textarea
-                    const originalPrompt = document.getElementById('prompt').value;
-                    document.getElementById('prompt').value = prompt;
+                    // Store the prompt temporarily for generation
+                    const originalPrompt = promptTextarea.value;
                     
-                    // Generate images for this prompt
-                    await this.generateSinglePrompt();
-                    successCount++;
-                    
-                    console.log(`[ImageGenerator] ✓ Successfully completed prompt ${i + 1}/${prompts.length}`);
-                    
-                    // Restore original prompt
-                    document.getElementById('prompt').value = originalPrompt;
+                    try {
+                        // Set the prompt for generation
+                        promptTextarea.value = prompt;
+                        
+                        // Generate images for this prompt
+                        await this.generateSinglePrompt();
+                        successCount++;
+                        
+                        console.log(`[ImageGenerator] ✓ Successfully completed prompt ${i + 1}/${prompts.length}`);
+                    } finally {
+                        // Always restore original prompt
+                        promptTextarea.value = originalPrompt;
+                    }
                     
                     // Small delay between requests to avoid rate limiting
                     if (i < prompts.length - 1) {
-                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        await new Promise(resolve => setTimeout(resolve, PromptQueue.BATCH_REQUEST_DELAY_MS));
                     }
                 } catch (error) {
                     failCount++;
@@ -803,6 +841,7 @@ class ImageGenerator {
             showStatus(`Batch generation error: ${error.message}`, 'error');
         } finally {
             showLoading(false);
+            promptTextarea.disabled = originalDisabledState;
         }
     }
 
@@ -1535,9 +1574,12 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('[Event] Add prompt button clicked');
         const promptText = document.getElementById('prompt').value.trim();
         if (promptText) {
-            if (promptQueue.addPrompt(promptText)) {
+            const result = promptQueue.addPrompt(promptText);
+            if (result) {
                 document.getElementById('prompt').value = '';
                 showStatus('Prompt added to queue!', 'success');
+            } else if (promptQueue.getCount() >= PromptQueue.MAX_QUEUE_SIZE) {
+                showStatus(`Queue is full (maximum ${PromptQueue.MAX_QUEUE_SIZE} prompts)`, 'error');
             } else {
                 showStatus('Cannot add empty prompt', 'error');
             }

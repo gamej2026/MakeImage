@@ -665,12 +665,19 @@ body {
     font-size: 1.2rem;
     cursor: pointer;
     transition: all 0.2s ease;
+    padding: 0;
+    line-height: 1;
 }
 
 .prompt-queue-remove:hover {
     background: rgba(245, 87, 108, 0.2);
     border-color: #f5576c;
     transform: scale(1.1);
+}
+
+.prompt-queue-remove:focus {
+    outline: 2px solid #f5576c;
+    outline-offset: 2px;
 }
 
 .prompt-actions {
