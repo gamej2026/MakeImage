@@ -133,6 +133,153 @@ class ConfigManager {
     }
 }
 
+// Prompt Queue Manager
+class PromptQueue {
+    static MAX_QUEUE_SIZE = 50;
+    static BATCH_REQUEST_DELAY_MS = 1000;
+    
+    constructor() {
+        this.prompts = [];
+        this.storageKey = 'promptQueue';
+        this.handleRemoveClick = null;
+        this.loadQueue();
+        console.log('[PromptQueue] Initialized with', this.prompts.length, 'prompts');
+    }
+
+    addPrompt(prompt) {
+        if (!prompt || !prompt.trim()) {
+            console.warn('[PromptQueue] Cannot add empty prompt');
+            return false;
+        }
+        
+        if (this.prompts.length >= PromptQueue.MAX_QUEUE_SIZE) {
+            console.warn('[PromptQueue] Queue is full, maximum size is', PromptQueue.MAX_QUEUE_SIZE);
+            return false;
+        }
+        
+        this.prompts.push(prompt.trim());
+        this.saveQueue();
+        this.updateUI();
+        console.log('[PromptQueue] Added prompt. Queue size:', this.prompts.length);
+        return true;
+    }
+
+    removePrompt(index) {
+        if (index >= 0 && index < this.prompts.length) {
+            const removed = this.prompts.splice(index, 1);
+            this.saveQueue();
+            this.updateUI();
+            console.log('[PromptQueue] Removed prompt at index', index, ':', removed[0].substring(0, 50) + '...');
+            return true;
+        }
+        return false;
+    }
+
+    clearQueue() {
+        const count = this.prompts.length;
+        this.prompts = [];
+        this.saveQueue();
+        this.updateUI();
+        console.log('[PromptQueue] Cleared queue. Removed', count, 'prompts');
+    }
+
+    getPrompts() {
+        return [...this.prompts];
+    }
+
+    getCount() {
+        return this.prompts.length;
+    }
+
+    saveQueue() {
+        try {
+            localStorage.setItem(this.storageKey, JSON.stringify(this.prompts));
+            console.log('[PromptQueue] Saved', this.prompts.length, 'prompts to storage');
+        } catch (error) {
+            console.error('[PromptQueue] Failed to save queue:', error);
+        }
+    }
+
+    loadQueue() {
+        try {
+            const saved = localStorage.getItem(this.storageKey);
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                // Validate that we got an array of strings
+                if (Array.isArray(parsed)) {
+                    this.prompts = parsed.filter(item => typeof item === 'string' && item.trim().length > 0);
+                    console.log('[PromptQueue] Loaded', this.prompts.length, 'prompts from storage');
+                } else {
+                    console.warn('[PromptQueue] Invalid queue data format, starting with empty queue');
+                    this.prompts = [];
+                }
+            }
+        } catch (error) {
+            console.error('[PromptQueue] Failed to load queue:', error);
+            this.prompts = [];
+        }
+    }
+
+    updateUI() {
+        const queueGroup = document.getElementById('promptQueueGroup');
+        const queueContainer = document.getElementById('promptQueue');
+        const queueCount = document.getElementById('queueCount');
+
+        if (!queueGroup || !queueContainer || !queueCount) {
+            return;
+        }
+
+        // Update count
+        queueCount.textContent = this.prompts.length;
+
+        // Show/hide queue section
+        if (this.prompts.length > 0) {
+            queueGroup.style.display = 'block';
+            
+            // Render queue items
+            queueContainer.innerHTML = '';
+            this.prompts.forEach((prompt, index) => {
+                const item = document.createElement('div');
+                item.className = 'prompt-queue-item';
+                item.setAttribute('role', 'listitem');
+                
+                const number = document.createElement('div');
+                number.className = 'prompt-queue-number';
+                number.textContent = (index + 1).toString();
+                
+                const text = document.createElement('div');
+                text.className = 'prompt-queue-text';
+                text.textContent = prompt;
+                text.title = prompt; // Show full text on hover
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'prompt-queue-remove';
+                removeBtn.innerHTML = '×';
+                removeBtn.setAttribute('aria-label', `Remove prompt ${index + 1} from queue`);
+                removeBtn.setAttribute('type', 'button');
+                removeBtn.dataset.index = index;
+                
+                item.appendChild(number);
+                item.appendChild(text);
+                item.appendChild(removeBtn);
+                queueContainer.appendChild(item);
+            });
+            
+            // Use event delegation for remove buttons
+            queueContainer.removeEventListener('click', this.handleRemoveClick);
+            this.handleRemoveClick = (e) => {
+                if (e.target.classList.contains('prompt-queue-remove')) {
+                    const index = parseInt(e.target.dataset.index);
+                    this.removePrompt(index);
+                }
+            };
+            queueContainer.addEventListener('click', this.handleRemoveClick);
+        } else {
+            queueGroup.style.display = 'none';
+        }
+    }
+}
+
 // Mask Editor
 class MaskEditor {
     // Constants
@@ -610,6 +757,231 @@ class ImageGenerator {
         } finally {
             console.log('[ImageGenerator] Step 7: Hiding loading UI...');
             showLoading(false);
+        }
+    }
+
+    async generateImagesFromQueue(promptQueue) {
+        console.log('[ImageGenerator] ==================== STARTING BATCH IMAGE GENERATION ====================');
+        const prompts = promptQueue.getPrompts();
+        
+        if (prompts.length === 0) {
+            console.warn('[ImageGenerator] No prompts in queue, falling back to single prompt generation');
+            return this.generateImages();
+        }
+
+        console.log('[ImageGenerator] Processing', prompts.length, 'prompts from queue');
+        
+        // Show loading state
+        showLoading(true);
+        hideStatus();
+        
+        // Disable prompt input during batch generation
+        const promptTextarea = document.getElementById('prompt');
+        const originalDisabledState = promptTextarea.disabled;
+        promptTextarea.disabled = true;
+
+        let successCount = 0;
+        let failCount = 0;
+
+        try {
+            for (let i = 0; i < prompts.length; i++) {
+                const prompt = prompts[i];
+                const promptPreview = prompt.length > 50 ? prompt.substring(0, 50) + '...' : prompt;
+                console.log(`[ImageGenerator] Processing prompt ${i + 1}/${prompts.length}:`, promptPreview);
+                
+                // Update status to show progress
+                showStatus(`Generating images for prompt ${i + 1}/${prompts.length}...`, 'info');
+                
+                try {
+                    // Store the prompt temporarily for generation
+                    const originalPrompt = promptTextarea.value;
+                    
+                    try {
+                        // Set the prompt for generation
+                        promptTextarea.value = prompt;
+                        
+                        // Generate images for this prompt
+                        await this.generateSinglePrompt();
+                        successCount++;
+                        
+                        console.log(`[ImageGenerator] ✓ Successfully completed prompt ${i + 1}/${prompts.length}`);
+                    } finally {
+                        // Always restore original prompt
+                        promptTextarea.value = originalPrompt;
+                    }
+                    
+                    // Small delay between requests to avoid rate limiting
+                    if (i < prompts.length - 1) {
+                        await new Promise(resolve => setTimeout(resolve, PromptQueue.BATCH_REQUEST_DELAY_MS));
+                    }
+                } catch (error) {
+                    failCount++;
+                    console.error(`[ImageGenerator] ✗ Failed to generate images for prompt ${i + 1}:`, error.message);
+                    // Continue with next prompt even if one fails
+                }
+            }
+
+            // Clear the queue after successful batch generation
+            if (successCount > 0) {
+                promptQueue.clearQueue();
+            }
+
+            // Show final status
+            if (failCount === 0) {
+                showStatus(`Successfully generated images for all ${successCount} prompts!`, 'success');
+            } else {
+                showStatus(`Completed with ${successCount} successful and ${failCount} failed prompts`, 'info');
+            }
+
+            console.log('[ImageGenerator] ==================== BATCH GENERATION COMPLETED ====================');
+            console.log(`[ImageGenerator] Results: ${successCount} successful, ${failCount} failed`);
+        } catch (error) {
+            console.error('[ImageGenerator] ✗✗✗ ERROR DURING BATCH GENERATION ✗✗✗');
+            console.error('[ImageGenerator] Error:', error);
+            showStatus(`Batch generation error: ${error.message}`, 'error');
+        } finally {
+            showLoading(false);
+            promptTextarea.disabled = originalDisabledState;
+        }
+    }
+
+    async generateSinglePrompt() {
+        // This is the core generation logic extracted for reuse
+        const config = this.configManager.getConfig();
+        
+        // Validate configuration
+        this.configManager.validateConfig(config);
+
+        // Determine API endpoint based on mode
+        const endpoint = config.apiEndpoint.replace(/\/$/, '');
+        let url, requestBody, fetchOptions;
+        
+        if (config.generationMode === 'image-edit') {
+            // Image editing mode
+            url = `${endpoint}/openai/deployments/${config.deploymentName}/images/edits?api-version=${config.apiVersion}`;
+            
+            const maskEditor = window.maskEditor;
+            if (!maskEditor || !maskEditor.baseImage) {
+                throw new Error('Please upload an image and create a mask before editing');
+            }
+            
+            const baseImageDataURL = maskEditor.getBaseImageDataURL();
+            const maskDataURL = maskEditor.getMaskDataURL();
+            
+            if (!baseImageDataURL || !maskDataURL) {
+                throw new Error('Failed to extract image or mask data');
+            }
+            
+            const imageBlob = await dataURLToBlob(baseImageDataURL);
+            const maskBlob = await dataURLToBlob(maskDataURL);
+            
+            const formData = new FormData();
+            formData.append('image', imageBlob, 'image.png');
+            formData.append('mask', maskBlob, 'mask.png');
+            formData.append('prompt', config.prompt.trim());
+            formData.append('n', config.n.toString());
+            formData.append('size', config.size);
+            
+            fetchOptions = {
+                method: 'POST',
+                headers: {
+                    'api-key': config.apiKey
+                },
+                body: formData
+            };
+        } else {
+            // Image generation mode
+            url = `${endpoint}/openai/deployments/${config.deploymentName}/images/generations?api-version=${config.apiVersion}`;
+
+            let enhancedPrompt = config.prompt.trim();
+            let apiStyle = config.style;
+            
+            if (config.style !== 'vivid' && config.style !== 'natural') {
+                const styleDescriptions = {
+                    'artistic': 'in an artistic and painterly style',
+                    'photorealistic': 'in a photorealistic style, like a high-quality photograph',
+                    'cinematic': 'in a cinematic style with dramatic lighting and composition',
+                    'anime': 'in anime style, Japanese animation art',
+                    'watercolor': 'in a soft watercolor painting style',
+                    'oil-painting': 'in a classic oil painting style',
+                    'sketch': 'as a hand-drawn sketch or pencil drawing',
+                    '3d-render': 'as a 3D computer graphics render',
+                    '2d-game-dot-background': 'as a 2D pixel art game background with retro dot graphics',
+                    '2d-game-dot-character': 'as a 2D pixel art game character with retro dot graphics',
+                    'game-illustration': 'in video game concept art illustration style',
+                    'casual-game-illustration': 'in bright and friendly casual game illustration style',
+                    'rpg-game-art': 'in fantasy RPG game art style with detailed characters and environments',
+                    'mobile-game-ui': 'as a mobile game UI element or icon design with clean and vibrant style',
+                    'retro-game-style': 'in retro 8-bit or 16-bit classic video game style',
+                    '3d-game-model': 'as a 3D game model with game-ready textures and lighting',
+                    'game-character-portrait': 'as a game character portrait with detailed facial features',
+                    'game-environment-concept': 'as a game environment concept art for level design',
+                    'custom': config.customStyle?.trim() || ''
+                };
+                
+                const styleDesc = (styleDescriptions[config.style] || '').trim();
+                if (styleDesc) {
+                    enhancedPrompt = `${enhancedPrompt} ${styleDesc}`;
+                }
+                apiStyle = 'vivid';
+            }
+
+            requestBody = {
+                prompt: enhancedPrompt,
+                size: config.size,
+                n: config.n,
+                quality: config.quality
+            };
+            
+            const deploymentLower = config.deploymentName.toLowerCase();
+            const isDallE3 = deploymentLower.includes('dall-e-3') || 
+                             deploymentLower.includes('dalle-3') ||
+                             deploymentLower.includes('dalle3') ||
+                             (deploymentLower.includes('dall') && deploymentLower.includes('3'));
+            
+            if (isDallE3) {
+                requestBody.style = apiStyle;
+            }
+
+            if (config.generationMode === 'image-with-text' && this.referenceImageBase64) {
+                requestBody.prompt = `${requestBody.prompt} (Style reference: uploaded image)`;
+            }
+            
+            fetchOptions = {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'api-key': config.apiKey
+                },
+                body: JSON.stringify(requestBody)
+            };
+        }
+
+        // Make API call
+        const startTime = Date.now();
+        const response = await fetch(url, fetchOptions);
+        const responseTime = Date.now() - startTime;
+        
+        console.log(`[ImageGenerator] API response received in ${responseTime}ms`);
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error?.message || `API Error: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        // Process and display images
+        if (data.data && data.data.length > 0) {
+            this.displayImages(data.data, config.prompt);
+            
+            try {
+                this.usageTracker.addImages(data.data.length);
+            } catch (error) {
+                console.error('[UsageTracker] Failed to update usage count:', error);
+            }
+        } else {
+            throw new Error('No images returned from API');
         }
     }
 
@@ -1137,6 +1509,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const usageTracker = new UsageTracker();
     usageTracker.updateDisplay();
     
+    console.log('[Init] Initializing prompt queue...');
+    const promptQueue = new PromptQueue();
+    promptQueue.updateUI();
+    
     console.log('[Init] Initializing image generator...');
     const imageGenerator = new ImageGenerator(configManager, usageTracker);
     window.imageGenerator = imageGenerator; // Make it globally accessible for inpaint button
@@ -1184,7 +1560,42 @@ document.addEventListener('DOMContentLoaded', () => {
     // Event Listeners
     document.getElementById('generateBtn').addEventListener('click', () => {
         console.log('[Event] Generate button clicked');
-        imageGenerator.generateImages();
+        // Check if there are prompts in the queue
+        if (promptQueue.getCount() > 0) {
+            console.log('[Event] Processing', promptQueue.getCount(), 'prompts from queue');
+            imageGenerator.generateImagesFromQueue(promptQueue);
+        } else {
+            console.log('[Event] No prompts in queue, generating from current prompt');
+            imageGenerator.generateImages();
+        }
+    });
+
+    document.getElementById('addPromptBtn').addEventListener('click', () => {
+        console.log('[Event] Add prompt button clicked');
+        const promptText = document.getElementById('prompt').value.trim();
+        if (promptText) {
+            const result = promptQueue.addPrompt(promptText);
+            if (result) {
+                document.getElementById('prompt').value = '';
+                showStatus('Prompt added to queue!', 'success');
+            } else if (promptQueue.getCount() >= PromptQueue.MAX_QUEUE_SIZE) {
+                showStatus(`Queue is full (maximum ${PromptQueue.MAX_QUEUE_SIZE} prompts)`, 'error');
+            } else {
+                showStatus('Cannot add empty prompt', 'error');
+            }
+        } else {
+            showStatus('Please enter a prompt first', 'error');
+        }
+    });
+
+    document.getElementById('clearQueueBtn').addEventListener('click', () => {
+        console.log('[Event] Clear queue button clicked');
+        if (promptQueue.getCount() > 0) {
+            promptQueue.clearQueue();
+            showStatus('Prompt queue cleared', 'info');
+        } else {
+            showStatus('Queue is already empty', 'info');
+        }
     });
 
     document.getElementById('saveConfigBtn').addEventListener('click', () => {
@@ -1202,7 +1613,12 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('prompt').addEventListener('keydown', (e) => {
         if (e.ctrlKey && e.key === 'Enter') {
             console.log('[Event] Ctrl+Enter pressed in prompt field');
-            imageGenerator.generateImages();
+            // Check if there are prompts in the queue
+            if (promptQueue.getCount() > 0) {
+                imageGenerator.generateImagesFromQueue(promptQueue);
+            } else {
+                imageGenerator.generateImages();
+            }
         }
     });
 
