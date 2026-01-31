@@ -10,14 +10,39 @@ class ConfigManager {
         console.log('[ConfigManager] Checking for GitHub secrets...');
         // Check if config.js loaded GitHub secrets
         if (typeof window.GITHUB_CONFIG !== 'undefined') {
-            console.log('[ConfigManager] GitHub secrets found, applying...');
-            if (window.GITHUB_CONFIG.AZURE_OPENAI_ENDPOINT) {
+            console.log('[ConfigManager] GitHub secrets configuration detected');
+            
+            let hasEndpoint = false;
+            let hasApiKey = false;
+            
+            // Check and apply AZURE_OPENAI_ENDPOINT
+            if (window.GITHUB_CONFIG.AZURE_OPENAI_ENDPOINT && window.GITHUB_CONFIG.AZURE_OPENAI_ENDPOINT.trim() !== '') {
                 document.getElementById('apiEndpoint').value = window.GITHUB_CONFIG.AZURE_OPENAI_ENDPOINT;
-                console.log('[ConfigManager] Applied AZURE_OPENAI_ENDPOINT from GitHub secrets');
+                console.log('[ConfigManager] ✓ Applied AZURE_OPENAI_ENDPOINT from GitHub secrets');
+                hasEndpoint = true;
+            } else {
+                console.warn('[ConfigManager] ⚠ AZURE_OPENAI_ENDPOINT is not set in GitHub secrets');
             }
-            if (window.GITHUB_CONFIG.API_KEY) {
+            
+            // Check and apply API_KEY
+            if (window.GITHUB_CONFIG.API_KEY && window.GITHUB_CONFIG.API_KEY.trim() !== '') {
                 document.getElementById('apiKey').value = window.GITHUB_CONFIG.API_KEY;
-                console.log('[ConfigManager] Applied API_KEY from GitHub secrets');
+                console.log('[ConfigManager] ✓ Applied API_KEY from GitHub secrets');
+                hasApiKey = true;
+            } else {
+                console.warn('[ConfigManager] ⚠ API_KEY is not set in GitHub secrets (AZURE_OPENAI_API_KEY)');
+            }
+            
+            // Show warning if secrets are not properly configured
+            if (!hasEndpoint || !hasApiKey) {
+                console.error('[ConfigManager] ⚠ GitHub secrets are incomplete. Please configure:');
+                if (!hasEndpoint) {
+                    console.error('[ConfigManager]   - AZURE_OPENAI_ENDPOINT in GitHub repository secrets');
+                }
+                if (!hasApiKey) {
+                    console.error('[ConfigManager]   - AZURE_OPENAI_API_KEY in GitHub repository secrets');
+                }
+                console.error('[ConfigManager] See README.md for setup instructions');
             }
         } else {
             console.log('[ConfigManager] No GitHub secrets found, using localStorage or manual config');
@@ -104,7 +129,7 @@ class ConfigManager {
     validateConfig(config) {
         console.log('[ConfigManager] Validating configuration...');
         if (!config.apiEndpoint) {
-            throw new Error('Azure OpenAI Endpoint is required');
+            throw new Error('Azure OpenAI Endpoint is required. Please configure it in Settings or set AZURE_OPENAI_ENDPOINT in GitHub Secrets.');
         }
         // Validate Azure OpenAI endpoint format
         // Support both .openai.azure.com and .cognitiveservices.azure.com endpoints
@@ -112,7 +137,7 @@ class ConfigManager {
             throw new Error('Invalid Azure OpenAI Endpoint format. Expected: https://your-resource.openai.azure.com or https://your-resource.cognitiveservices.azure.com');
         }
         if (!config.apiKey) {
-            throw new Error('API Key is required');
+            throw new Error('API Key is required. Please configure it in Settings or set AZURE_OPENAI_API_KEY in GitHub Secrets.');
         }
         if (!config.deploymentName) {
             throw new Error('Deployment Name is required');
