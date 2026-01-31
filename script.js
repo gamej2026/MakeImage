@@ -882,10 +882,10 @@ class ImageGenerator {
 
     async generateSinglePromptWithText(promptText) {
         // Generate images for a specific prompt text without modifying the UI prompt field
-        const config = this.configManager.getConfig();
+        // Create a shallow copy of config to avoid side effects
+        const config = {...this.configManager.getConfig()};
         
         // Override the prompt with the provided text
-        const originalPrompt = config.prompt;
         config.prompt = promptText;
         
         // Validate configuration
@@ -1300,9 +1300,11 @@ class ImageGenerator {
             // Update localStorage
             this.saveImagesToStorage();
             
-            // Update usage tracker
-            if (this.usageTracker.getTotalCount() > 0) {
+            // Update usage tracker - always decrement to keep counts synchronized
+            try {
                 this.usageTracker.addImages(-1);
+            } catch (error) {
+                console.error('[ImageGenerator] Failed to update usage tracker:', error);
             }
         } else {
             console.warn('[ImageGenerator] Image not found in array, but removing from DOM');
