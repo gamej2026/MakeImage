@@ -369,7 +369,7 @@ body {
     border-radius: 16px;
     overflow: hidden;
     border: 1px solid var(--border);
-    transition: all 0.3s ease;
+    transition: all 0.3s ease, opacity 0.3s ease, transform 0.3s ease;
     animation: scaleIn 0.5s ease;
 }
 
@@ -437,6 +437,17 @@ body {
 .image-card-actions button.btn-inpaint:hover {
     background: rgba(102, 126, 234, 0.2);
     border-color: var(--accent-color);
+    transform: translateY(-1px);
+}
+
+.image-card-actions button.btn-delete {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.image-card-actions button.btn-delete:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgb(239, 68, 68);
     transform: translateY(-1px);
 }
 

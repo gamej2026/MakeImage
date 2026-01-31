@@ -809,44 +809,54 @@ class ImageGenerator {
         let failCount = 0;
 
         try {
-            for (let i = 0; i < prompts.length; i++) {
-                const prompt = prompts[i];
-                const promptPreview = prompt.length > 50 ? prompt.substring(0, 50) + '...' : prompt;
-                console.log(`[ImageGenerator] Processing prompt ${i + 1}/${prompts.length}:`, promptPreview);
+            // Parallel processing: Process up to 3 prompts in parallel
+            const MAX_PARALLEL = 3;
+            const results = [];
+            
+            for (let i = 0; i < prompts.length; i += MAX_PARALLEL) {
+                const batch = prompts.slice(i, Math.min(i + MAX_PARALLEL, prompts.length));
+                console.log(`[ImageGenerator] Processing batch ${Math.floor(i / MAX_PARALLEL) + 1}: ${batch.length} prompts in parallel`);
                 
                 // Update status to show progress
-                showStatus(`Generating images for prompt ${i + 1}/${prompts.length}...`, 'info');
+                showStatus(`Generating images for prompts ${i + 1}-${Math.min(i + MAX_PARALLEL, prompts.length)} of ${prompts.length}...`, 'info');
                 
-                try {
-                    // Store the prompt temporarily for generation
-                    const originalPrompt = promptTextarea.value;
+                // Process batch in parallel
+                const batchPromises = batch.map(async (prompt, batchIndex) => {
+                    const promptIndex = i + batchIndex;
+                    const promptPreview = prompt.length > 50 ? prompt.substring(0, 50) + '...' : prompt;
+                    console.log(`[ImageGenerator] Processing prompt ${promptIndex + 1}/${prompts.length}:`, promptPreview);
                     
                     try {
-                        // Set the prompt for generation
-                        promptTextarea.value = prompt;
-                        
-                        // Generate images for this prompt
-                        await this.generateSinglePrompt();
+                        // Generate images for this prompt using the direct API call
+                        await this.generateSinglePromptWithText(prompt);
+                        console.log(`[ImageGenerator] ✓ Successfully completed prompt ${promptIndex + 1}/${prompts.length}`);
+                        return { success: true, promptIndex };
+                    } catch (error) {
+                        console.error(`[ImageGenerator] ✗ Failed to generate images for prompt ${promptIndex + 1}:`, error.message);
+                        return { success: false, promptIndex, error };
+                    }
+                });
+                
+                // Wait for all prompts in this batch to complete
+                const batchResults = await Promise.all(batchPromises);
+                results.push(...batchResults);
+                
+                // Count successes and failures
+                batchResults.forEach(result => {
+                    if (result.success) {
                         successCount++;
-                        
-                        console.log(`[ImageGenerator] ✓ Successfully completed prompt ${i + 1}/${prompts.length}`);
-                    } finally {
-                        // Always restore original prompt
-                        promptTextarea.value = originalPrompt;
+                    } else {
+                        failCount++;
                     }
-                    
-                    // Small delay between requests to avoid rate limiting
-                    if (i < prompts.length - 1) {
-                        await new Promise(resolve => setTimeout(resolve, PromptQueue.BATCH_REQUEST_DELAY_MS));
-                    }
-                } catch (error) {
-                    failCount++;
-                    console.error(`[ImageGenerator] ✗ Failed to generate images for prompt ${i + 1}:`, error.message);
-                    // Continue with next prompt even if one fails
+                });
+                
+                // Small delay between batches to avoid overwhelming the API
+                if (i + MAX_PARALLEL < prompts.length) {
+                    await new Promise(resolve => setTimeout(resolve, PromptQueue.BATCH_REQUEST_DELAY_MS));
                 }
             }
 
-            // Clear the queue after successful batch generation
+            // Clear the queue after batch generation
             if (successCount > 0) {
                 promptQueue.clearQueue();
             }
@@ -867,6 +877,147 @@ class ImageGenerator {
         } finally {
             showLoading(false);
             promptTextarea.disabled = originalDisabledState;
+        }
+    }
+
+    async generateSinglePromptWithText(promptText) {
+        // Generate images for a specific prompt text without modifying the UI prompt field
+        const config = this.configManager.getConfig();
+        
+        // Override the prompt with the provided text
+        const originalPrompt = config.prompt;
+        config.prompt = promptText;
+        
+        // Validate configuration
+        this.configManager.validateConfig(config);
+
+        // Determine API endpoint based on mode
+        const endpoint = config.apiEndpoint.replace(/\/$/, '');
+        let url, requestBody, fetchOptions;
+        
+        if (config.generationMode === 'image-edit') {
+            // Image editing mode
+            url = `${endpoint}/openai/deployments/${config.deploymentName}/images/edits?api-version=${config.apiVersion}`;
+            
+            const maskEditor = window.maskEditor;
+            if (!maskEditor || !maskEditor.baseImage) {
+                throw new Error('Please upload an image and create a mask before editing');
+            }
+            
+            const baseImageDataURL = maskEditor.getBaseImageDataURL();
+            const maskDataURL = maskEditor.getMaskDataURL();
+            
+            if (!baseImageDataURL || !maskDataURL) {
+                throw new Error('Failed to extract image or mask data');
+            }
+            
+            const imageBlob = await dataURLToBlob(baseImageDataURL);
+            const maskBlob = await dataURLToBlob(maskDataURL);
+            
+            const formData = new FormData();
+            formData.append('image', imageBlob, 'image.png');
+            formData.append('mask', maskBlob, 'mask.png');
+            formData.append('prompt', config.prompt.trim());
+            formData.append('n', config.n.toString());
+            formData.append('size', config.size);
+            
+            fetchOptions = {
+                method: 'POST',
+                headers: {
+                    'api-key': config.apiKey
+                },
+                body: formData
+            };
+        } else {
+            // Image generation mode
+            url = `${endpoint}/openai/deployments/${config.deploymentName}/images/generations?api-version=${config.apiVersion}`;
+
+            // Build the prompt with style enhancements
+            let enhancedPrompt = config.prompt.trim();
+            let apiStyle = config.style;
+            
+            if (config.style !== 'vivid' && config.style !== 'natural') {
+                const styleDescriptions = {
+                    'artistic': 'in an artistic and painterly style',
+                    'photorealistic': 'in a photorealistic style, like a high-quality photograph',
+                    'cinematic': 'in a cinematic style with dramatic lighting and composition',
+                    'anime': 'in anime style, Japanese animation art',
+                    'watercolor': 'in a soft watercolor painting style',
+                    'oil-painting': 'in a classic oil painting style',
+                    'sketch': 'as a hand-drawn sketch or pencil drawing',
+                    '3d-render': 'as a 3D computer graphics render',
+                    '2d-game-dot-background': 'as a 2D pixel art game background with retro dot graphics',
+                    '2d-game-dot-character': 'as a 2D pixel art game character with retro dot graphics',
+                    'game-illustration': 'in video game concept art illustration style',
+                    'casual-game-illustration': 'in bright and friendly casual game illustration style',
+                    'rpg-game-art': 'in fantasy RPG game art style with detailed characters and environments',
+                    'mobile-game-ui': 'as a mobile game UI element or icon design with clean and vibrant style',
+                    'retro-game-style': 'in retro 8-bit or 16-bit classic video game style',
+                    '3d-game-model': 'as a 3D game model with game-ready textures and lighting',
+                    'game-character-portrait': 'as a game character portrait with detailed facial features',
+                    'game-environment-concept': 'as a game environment concept art for level design',
+                    'custom': config.customStyle?.trim() || ''
+                };
+                
+                const styleDesc = (styleDescriptions[config.style] || '').trim();
+                if (styleDesc) {
+                    enhancedPrompt = `${enhancedPrompt} ${styleDesc}`;
+                }
+                apiStyle = 'vivid';
+            }
+
+            requestBody = {
+                prompt: enhancedPrompt,
+                size: config.size,
+                n: config.n,
+                quality: config.quality
+            };
+            
+            const deploymentLower = config.deploymentName.toLowerCase();
+            const isDallE3 = deploymentLower.includes('dall-e-3') || 
+                             deploymentLower.includes('dalle-3') ||
+                             deploymentLower.includes('dalle3') ||
+                             (deploymentLower.includes('dall') && deploymentLower.includes('3'));
+            
+            if (isDallE3) {
+                requestBody.style = apiStyle;
+            }
+
+            if (config.generationMode === 'image-with-text' && this.referenceImageBase64) {
+                requestBody.prompt = `${requestBody.prompt} (Style reference: uploaded image)`;
+            }
+            
+            fetchOptions = {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'api-key': config.apiKey
+                },
+                body: JSON.stringify(requestBody)
+            };
+        }
+
+        // Make API call
+        const response = await fetch(url, fetchOptions);
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error?.message || `API Error: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        // Process and display images
+        if (data.data && data.data.length > 0) {
+            this.displayImages(data.data, promptText);
+            
+            try {
+                this.usageTracker.addImages(data.data.length);
+            } catch (error) {
+                console.error('[UsageTracker] Failed to update usage count:', error);
+            }
+        } else {
+            throw new Error('No images returned from API');
         }
     }
 
@@ -1106,15 +1257,66 @@ class ImageGenerator {
             switchToInpaintMode(sanitizedUrl);
         });
 
+        // Delete button
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'btn-delete';
+        deleteBtn.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M3 4H13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M5 4V3C5 2.45 5.45 2 6 2H10C10.55 2 11 2.45 11 3V4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M5 7V13M8 7V13M11 7V13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M4 4H12V13C12 13.55 11.55 14 11 14H5C4.45 14 4 13.55 4 13V4Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+            </svg>
+            Delete
+        `;
+        deleteBtn.addEventListener('click', () => {
+            console.log(`[ImageGenerator] Delete button clicked for image ${index + 1}`);
+            if (confirm('Are you sure you want to delete this image?')) {
+                this.deleteImage(card, imageUrl);
+            }
+        });
+
         actionsDiv.appendChild(downloadBtn);
         actionsDiv.appendChild(copyBtn);
         actionsDiv.appendChild(inpaintBtn);
+        actionsDiv.appendChild(deleteBtn);
         infoDiv.appendChild(promptP);
         infoDiv.appendChild(actionsDiv);
         card.appendChild(img);
         card.appendChild(infoDiv);
 
         return card;
+    }
+
+    deleteImage(card, imageUrl) {
+        console.log('[ImageGenerator] Deleting image...');
+        
+        // Find and remove from generatedImages array
+        const imageIndex = this.generatedImages.findIndex(img => img.url === imageUrl);
+        if (imageIndex !== -1) {
+            this.generatedImages.splice(imageIndex, 1);
+            console.log(`[ImageGenerator] Removed image at index ${imageIndex} from array`);
+            
+            // Update localStorage
+            this.saveImagesToStorage();
+            
+            // Update usage tracker
+            if (this.usageTracker.getTotalCount() > 0) {
+                this.usageTracker.addImages(-1);
+            }
+        } else {
+            console.warn('[ImageGenerator] Image not found in array, but removing from DOM');
+        }
+        
+        // Remove from DOM with animation
+        card.style.opacity = '0';
+        card.style.transform = 'scale(0.8)';
+        setTimeout(() => {
+            card.remove();
+            console.log('[ImageGenerator] Image card removed from gallery');
+        }, 300);
+        
+        showStatus('Image deleted successfully', 'success');
     }
 
     sanitizeUrl(url) {
