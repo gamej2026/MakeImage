@@ -61,14 +61,30 @@ Azure OpenAI GPT image 1.5 (DALL-E 3)를 사용하여 이미지를 생성하는 
 👉 **https://gamej2026.github.io/MakeImage/** 에서 바로 사용하세요!
 
 #### GitHub Pages 배포 설정 (저장소 관리자용)
-1. GitHub 저장소 Settings > Secrets and variables > Actions
-2. 다음 Secrets 추가:
-   - `AZURE_OPENAI_ENDPOINT`: Azure OpenAI 엔드포인트 (예: `https://your-resource.openai.azure.com`)
-   - `DEPLOYMENT_NAME`: DALL-E 3 배포 이름 (예: `dall-e-3`)
+
+> ⚠️ **중요**: GitHub Secrets를 먼저 설정해야 애플리케이션이 정상 작동합니다!
+
+1. **GitHub 저장소 Settings > Secrets and variables > Actions**로 이동
+2. **다음 Secrets를 반드시 추가** (New repository secret 버튼 클릭):
+   - `AZURE_OPENAI_ENDPOINT`: Azure OpenAI 엔드포인트
+     - 예: `https://your-resource.openai.azure.com`
+     - Azure Portal의 "Keys and Endpoint"에서 확인
    - `AZURE_OPENAI_API_KEY`: Azure OpenAI API 키
-3. Settings > Pages에서 Source를 `main` 브랜치로 설정
-4. GitHub Actions가 자동으로 배포
-5. `https://[username].github.io/MakeImage/` 에서 접속
+     - Azure Portal의 "Keys and Endpoint"에서 Key 1 또는 Key 2 복사
+     - **주의**: 비밀번호처럼 안전하게 보관하세요
+   - ~~`DEPLOYMENT_NAME`~~: ✅ 자동으로 `gpt-image-1.5`로 설정됨 (수동 설정 불필요)
+
+3. **Settings > Pages**에서 Source를 `main` 브랜치로 설정
+4. GitHub Actions가 자동으로 배포 (Actions 탭에서 진행 상황 확인)
+5. 배포 완료 후 `https://[username].github.io/MakeImage/`에서 접속
+
+**배포 후 확인 사항:**
+- 브라우저 개발자 도구(F12)의 Console 탭을 열어 다음 로그가 표시되는지 확인:
+  ```
+  [ConfigManager] ✓ Applied AZURE_OPENAI_ENDPOINT from GitHub secrets
+  [ConfigManager] ✓ Applied API_KEY from GitHub secrets
+  ```
+- 만약 `⚠ API_KEY is not set in GitHub secrets` 경고가 나타나면, GitHub Secrets가 제대로 설정되지 않은 것입니다.
 
 > ⚠️ **참고**: 로컬 실행은 지원하지 않습니다. GitHub Pages를 통해 서비스를 이용해주세요.
 
