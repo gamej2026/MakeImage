@@ -35,14 +35,14 @@ class ConfigManager {
             
             // Show warning if secrets are not properly configured
             if (!hasEndpoint || !hasApiKey) {
-                console.error('[ConfigManager] ⚠ GitHub secrets are incomplete. Please configure:');
+                console.warn('[ConfigManager] ⚠ GitHub secrets are incomplete. Please configure:');
                 if (!hasEndpoint) {
-                    console.error('[ConfigManager]   - AZURE_OPENAI_ENDPOINT in GitHub repository secrets');
+                    console.warn('[ConfigManager]   - AZURE_OPENAI_ENDPOINT in GitHub repository secrets');
                 }
                 if (!hasApiKey) {
-                    console.error('[ConfigManager]   - AZURE_OPENAI_API_KEY in GitHub repository secrets');
+                    console.warn('[ConfigManager]   - AZURE_OPENAI_API_KEY in GitHub repository secrets');
                 }
-                console.error('[ConfigManager] See README.md for setup instructions');
+                console.warn('[ConfigManager] See README.md for setup instructions');
             }
         } else {
             console.log('[ConfigManager] No GitHub secrets found, using localStorage or manual config');
