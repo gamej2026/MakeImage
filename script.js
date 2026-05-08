@@ -53,8 +53,8 @@ class ConfigManager {
             document.getElementById('deploymentName').value = window.DEPLOYMENT_NAME;
             console.log('[ConfigManager] Applied hardcoded DEPLOYMENT_NAME:', window.DEPLOYMENT_NAME);
         } else {
-            document.getElementById('deploymentName').value = 'gpt-image-1.5';
-            console.log('[ConfigManager] Using default DEPLOYMENT_NAME: gpt-image-1.5');
+            document.getElementById('deploymentName').value = 'gpt-image-2';
+            console.log('[ConfigManager] Using default DEPLOYMENT_NAME: gpt-image-2');
         }
     }
 
@@ -67,6 +67,8 @@ class ConfigManager {
             apiVersion: document.getElementById('apiVersion').value,
             size: document.getElementById('size').value,
             quality: document.getElementById('quality').value,
+            outputFormat: document.getElementById('outputFormat').value,
+            background: document.getElementById('background').value,
             style: document.getElementById('style').value,
             customStyle: document.getElementById('customStyle').value,
             numImages: document.getElementById('numImages').value
@@ -87,6 +89,8 @@ class ConfigManager {
             if (config.apiVersion) document.getElementById('apiVersion').value = config.apiVersion;
             if (config.size) document.getElementById('size').value = config.size;
             if (config.quality) document.getElementById('quality').value = config.quality;
+            if (config.outputFormat) document.getElementById('outputFormat').value = config.outputFormat;
+            if (config.background) document.getElementById('background').value = config.background;
             if (config.style) {
                 document.getElementById('style').value = config.style;
                 // Show custom style input if style is 'custom'
@@ -114,6 +118,8 @@ class ConfigManager {
             prompt: document.getElementById('prompt').value.trim(),
             size: document.getElementById('size').value,
             quality: document.getElementById('quality').value,
+            outputFormat: document.getElementById('outputFormat').value,
+            background: document.getElementById('background').value,
             style: styleValue,
             customStyle: customStyle,
             n: parseInt(document.getElementById('numImages').value),
@@ -620,10 +626,12 @@ class ImageGenerator {
                 formData.append('prompt', config.prompt.trim());
                 formData.append('n', config.n.toString());
                 formData.append('size', config.size);
+                formData.append('quality', config.quality);
                 
                 console.log('[ImageGenerator] Editing request prepared:', {
                     prompt: config.prompt.substring(0, 100) + (config.prompt.length > 100 ? '...' : ''),
                     size: config.size,
+                    quality: config.quality,
                     n: config.n
                 });
                 
@@ -634,18 +642,15 @@ class ImageGenerator {
                     },
                     body: formData
                 };
-            } else {
-                // Image generation mode - use /images/generations endpoint
-                console.log('[ImageGenerator] Step 3: Building image generation API request...');
+            } else if (config.generationMode === 'image-with-text' && this.referenceImageBase64) {
+                // Image + Text mode - gpt-image-2 supports direct image input via multipart
+                console.log('[ImageGenerator] Step 3: Building image+text generation API request...');
                 url = `${endpoint}/openai/deployments/${config.deploymentName}/images/generations?api-version=${config.apiVersion}`;
-                console.log('[ImageGenerator] API Endpoint (Generation):', url);
+                console.log('[ImageGenerator] API Endpoint (Generation with image):', url);
 
                 // Build the prompt with style enhancements
                 let enhancedPrompt = config.prompt.trim();
-                let apiStyle = config.style;
                 
-                // Azure OpenAI only supports 'vivid' and 'natural' styles directly
-                // For other styles, we enhance the prompt with style descriptions
                 if (config.style !== 'vivid' && config.style !== 'natural') {
                     const styleDescriptions = {
                         'artistic': 'in an artistic and painterly style',
@@ -674,43 +679,83 @@ class ImageGenerator {
                         enhancedPrompt = `${enhancedPrompt} ${styleDesc}`;
                         console.log('[ImageGenerator] Enhanced prompt with style:', styleDesc);
                     }
-                    // Default to 'vivid' for custom styles to get better results
-                    apiStyle = 'vivid';
                 }
 
-                // Prepare request body according to Azure OpenAI API specs
+                // Build FormData with image input for gpt-image-2
+                const formData = new FormData();
+                const refImageBlob = await dataURLToBlob(this.referenceImageBase64);
+                formData.append('image', refImageBlob, 'reference.png');
+                formData.append('prompt', enhancedPrompt);
+                formData.append('n', config.n.toString());
+                formData.append('size', config.size);
+                formData.append('quality', config.quality);
+                
+                console.log('[ImageGenerator] Image+Text request prepared:', {
+                    prompt: enhancedPrompt.substring(0, 100) + (enhancedPrompt.length > 100 ? '...' : ''),
+                    size: config.size,
+                    quality: config.quality,
+                    n: config.n,
+                    hasReferenceImage: true
+                });
+
+                fetchOptions = {
+                    method: 'POST',
+                    headers: {
+                        'api-key': config.apiKey
+                    },
+                    body: formData
+                };
+            } else {
+                // Text-only image generation mode - use /images/generations endpoint
+                console.log('[ImageGenerator] Step 3: Building text-only image generation API request...');
+                url = `${endpoint}/openai/deployments/${config.deploymentName}/images/generations?api-version=${config.apiVersion}`;
+                console.log('[ImageGenerator] API Endpoint (Generation):', url);
+
+                // Build the prompt with style enhancements
+                let enhancedPrompt = config.prompt.trim();
+                
+                // For gpt-image-2, styles are applied via prompt enhancement
+                if (config.style !== 'vivid' && config.style !== 'natural') {
+                    const styleDescriptions = {
+                        'artistic': 'in an artistic and painterly style',
+                        'photorealistic': 'in a photorealistic style, like a high-quality photograph',
+                        'cinematic': 'in a cinematic style with dramatic lighting and composition',
+                        'anime': 'in anime style, Japanese animation art',
+                        'watercolor': 'in a soft watercolor painting style',
+                        'oil-painting': 'in a classic oil painting style',
+                        'sketch': 'as a hand-drawn sketch or pencil drawing',
+                        '3d-render': 'as a 3D computer graphics render',
+                        '2d-game-dot-background': 'as a 2D pixel art game background with retro dot graphics',
+                        '2d-game-dot-character': 'as a 2D pixel art game character with retro dot graphics',
+                        'game-illustration': 'in video game concept art illustration style',
+                        'casual-game-illustration': 'in bright and friendly casual game illustration style',
+                        'rpg-game-art': 'in fantasy RPG game art style with detailed characters and environments',
+                        'mobile-game-ui': 'as a mobile game UI element or icon design with clean and vibrant style',
+                        'retro-game-style': 'in retro 8-bit or 16-bit classic video game style',
+                        '3d-game-model': 'as a 3D game model with game-ready textures and lighting',
+                        'game-character-portrait': 'as a game character portrait with detailed facial features',
+                        'game-environment-concept': 'as a game environment concept art for level design',
+                        'custom': config.customStyle?.trim() || ''
+                    };
+                    
+                    const styleDesc = (styleDescriptions[config.style] || '').trim();
+                    if (styleDesc) {
+                        enhancedPrompt = `${enhancedPrompt} ${styleDesc}`;
+                        console.log('[ImageGenerator] Enhanced prompt with style:', styleDesc);
+                    }
+                }
+
+                // Prepare request body for gpt-image-2
                 requestBody = {
                     prompt: enhancedPrompt,
                     size: config.size,
                     n: config.n,
-                    quality: config.quality
+                    quality: config.quality,
+                    output_format: config.outputFormat,
+                    background: config.background
                 };
-                
-                // Only include 'style' parameter for DALL-E 3 models
-                // GPT-image models (gpt-image-1, gpt-image-1.5) do not support the 'style' parameter
-                // DALL-E 3 deployments typically have names like: dall-e-3, dalle3, DALL-E-3, etc.
-                const deploymentLower = config.deploymentName.toLowerCase();
-                const isDallE3 = deploymentLower.includes('dall-e-3') || 
-                                 deploymentLower.includes('dalle-3') ||
-                                 deploymentLower.includes('dalle3') ||
-                                 (deploymentLower.includes('dall') && deploymentLower.includes('3'));
-                
-                if (isDallE3) {
-                    requestBody.style = apiStyle;
-                    console.log('[ImageGenerator] DALL-E 3 model detected - including style parameter:', apiStyle);
-                } else {
-                    console.log('[ImageGenerator] Non-DALL-E-3 model detected - excluding style parameter (styles applied via prompt enhancement)');
-                }
 
-                // Add reference image context if in image+text mode
-                if (config.generationMode === 'image-with-text' && this.referenceImageBase64) {
-                    console.log('[ImageGenerator] Reference image uploaded - enhancing prompt with context');
-                    console.log('[ImageGenerator] Note: Azure DALL-E 3 API does not accept image input directly');
-                    console.log('[ImageGenerator] The uploaded image serves as visual reference for prompt creation');
-                    // Note: Azure DALL-E 3 doesn't support direct image input in API,
-                    // The reference image is stored for user reference but not sent to API
-                    requestBody.prompt = `${requestBody.prompt} (Style reference: uploaded image)`;
-                }
+                console.log('[ImageGenerator] gpt-image-2 model - styles applied via prompt enhancement');
 
                 console.log('[ImageGenerator] Request body:', {
                     ...requestBody,
@@ -920,6 +965,7 @@ class ImageGenerator {
             formData.append('prompt', config.prompt.trim());
             formData.append('n', config.n.toString());
             formData.append('size', config.size);
+            formData.append('quality', config.quality);
             
             fetchOptions = {
                 method: 'POST',
@@ -929,12 +975,11 @@ class ImageGenerator {
                 body: formData
             };
         } else {
-            // Image generation mode
+            // Text-only image generation mode
             url = `${endpoint}/openai/deployments/${config.deploymentName}/images/generations?api-version=${config.apiVersion}`;
 
             // Build the prompt with style enhancements
             let enhancedPrompt = config.prompt.trim();
-            let apiStyle = config.style;
             
             if (config.style !== 'vivid' && config.style !== 'natural') {
                 const styleDescriptions = {
@@ -963,29 +1008,16 @@ class ImageGenerator {
                 if (styleDesc) {
                     enhancedPrompt = `${enhancedPrompt} ${styleDesc}`;
                 }
-                apiStyle = 'vivid';
             }
 
             requestBody = {
                 prompt: enhancedPrompt,
                 size: config.size,
                 n: config.n,
-                quality: config.quality
+                quality: config.quality,
+                output_format: config.outputFormat,
+                background: config.background
             };
-            
-            const deploymentLower = config.deploymentName.toLowerCase();
-            const isDallE3 = deploymentLower.includes('dall-e-3') || 
-                             deploymentLower.includes('dalle-3') ||
-                             deploymentLower.includes('dalle3') ||
-                             (deploymentLower.includes('dall') && deploymentLower.includes('3'));
-            
-            if (isDallE3) {
-                requestBody.style = apiStyle;
-            }
-
-            if (config.generationMode === 'image-with-text' && this.referenceImageBase64) {
-                requestBody.prompt = `${requestBody.prompt} (Style reference: uploaded image)`;
-            }
             
             fetchOptions = {
                 method: 'POST',
@@ -1057,6 +1089,7 @@ class ImageGenerator {
             formData.append('prompt', config.prompt.trim());
             formData.append('n', config.n.toString());
             formData.append('size', config.size);
+            formData.append('quality', config.quality);
             
             fetchOptions = {
                 method: 'POST',
@@ -1066,11 +1099,10 @@ class ImageGenerator {
                 body: formData
             };
         } else {
-            // Image generation mode
+            // Text-only image generation mode
             url = `${endpoint}/openai/deployments/${config.deploymentName}/images/generations?api-version=${config.apiVersion}`;
 
             let enhancedPrompt = config.prompt.trim();
-            let apiStyle = config.style;
             
             if (config.style !== 'vivid' && config.style !== 'natural') {
                 const styleDescriptions = {
@@ -1099,29 +1131,16 @@ class ImageGenerator {
                 if (styleDesc) {
                     enhancedPrompt = `${enhancedPrompt} ${styleDesc}`;
                 }
-                apiStyle = 'vivid';
             }
 
             requestBody = {
                 prompt: enhancedPrompt,
                 size: config.size,
                 n: config.n,
-                quality: config.quality
+                quality: config.quality,
+                output_format: config.outputFormat,
+                background: config.background
             };
-            
-            const deploymentLower = config.deploymentName.toLowerCase();
-            const isDallE3 = deploymentLower.includes('dall-e-3') || 
-                             deploymentLower.includes('dalle-3') ||
-                             deploymentLower.includes('dalle3') ||
-                             (deploymentLower.includes('dall') && deploymentLower.includes('3'));
-            
-            if (isDallE3) {
-                requestBody.style = apiStyle;
-            }
-
-            if (config.generationMode === 'image-with-text' && this.referenceImageBase64) {
-                requestBody.prompt = `${requestBody.prompt} (Style reference: uploaded image)`;
-            }
             
             fetchOptions = {
                 method: 'POST',
@@ -1161,6 +1180,12 @@ class ImageGenerator {
         }
     }
 
+    static getMimeType(outputFormat) {
+        if (outputFormat === 'jpeg') return 'image/jpeg';
+        if (outputFormat === 'webp') return 'image/webp';
+        return 'image/png';
+    }
+
     displayImages(images, prompt) {
         console.log(`[ImageGenerator] Displaying ${images.length} images in gallery...`);
         const gallery = document.getElementById('imageGallery');
@@ -1173,9 +1198,11 @@ class ImageGenerator {
 
         // Store images with their prompts and timestamps
         const timestamp = Date.now();
+        const outputFormat = this.configManager.getConfig().outputFormat || 'png';
+        const mimeType = ImageGenerator.getMimeType(outputFormat);
         images.forEach(imageData => {
             this.generatedImages.push({
-                url: imageData.url || (imageData.b64_json ? `data:image/png;base64,${imageData.b64_json}` : ''),
+                url: imageData.url || (imageData.b64_json ? `data:${mimeType};base64,${imageData.b64_json}` : ''),
                 prompt: prompt,
                 timestamp: timestamp
             });
@@ -1192,7 +1219,9 @@ class ImageGenerator {
         card.className = 'image-card';
 
         // Get the image URL (could be url or b64_json depending on response_format)
-        const imageUrl = imageData.url || (imageData.b64_json ? `data:image/png;base64,${imageData.b64_json}` : '');
+        const outputFormat = this.configManager?.getConfig()?.outputFormat || 'png';
+        const mimeType = ImageGenerator.getMimeType(outputFormat);
+        const imageUrl = imageData.url || (imageData.b64_json ? `data:${mimeType};base64,${imageData.b64_json}` : '');
         console.log(`[ImageGenerator] Image ${index + 1} URL type:`, imageUrl.startsWith('data:') ? 'base64' : 'url');
 
         // Create image element safely
@@ -1537,7 +1566,7 @@ function setupImageUpload(imageGenerator, maskEditor) {
             imageUploadGroup.style.display = 'block';
             maskEditorGroup.style.display = 'none';
             imageUploadLabel.textContent = 'Reference Image';
-            imageUploadHelperText.textContent = 'Upload a reference image for visual context (not directly processed by API)';
+            imageUploadHelperText.textContent = 'Upload a reference image to send along with your prompt to the API';
             promptHelperText.textContent = 'Describe modifications or style to apply to the reference image';
             infoNote.style.display = 'block';
         } else if (mode === 'image-edit') {
@@ -1775,7 +1804,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     // Auto-save configuration on field changes
-    const autoSaveFields = ['apiVersion', 'size', 'quality', 'customStyle', 'numImages'];
+    const autoSaveFields = ['apiVersion', 'size', 'quality', 'outputFormat', 'background', 'customStyle', 'numImages'];
     autoSaveFields.forEach(fieldId => {
         const element = document.getElementById(fieldId);
         if (element) {
@@ -1783,6 +1812,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.log('[Event] Auto-saving config after', fieldId, 'changed');
                 configManager.saveConfig();
             });
+        }
+    });
+
+    // Enforce PNG when transparent background is selected
+    let isAutoChanging = false;
+    document.getElementById('background').addEventListener('change', (e) => {
+        if (isAutoChanging) return;
+        if (e.target.value === 'transparent') {
+            const outputFormatSelect = document.getElementById('outputFormat');
+            if (outputFormatSelect.value !== 'png') {
+                isAutoChanging = true;
+                outputFormatSelect.value = 'png';
+                isAutoChanging = false;
+                console.log('[Event] Transparent background requires PNG - auto-switching output format');
+                showStatus('Transparent background requires PNG format. Output format changed to PNG.', 'info');
+            }
+        }
+    });
+
+    // Warn when switching away from PNG with transparent background
+    document.getElementById('outputFormat').addEventListener('change', (e) => {
+        if (isAutoChanging) return;
+        const backgroundSelect = document.getElementById('background');
+        if (backgroundSelect.value === 'transparent' && e.target.value !== 'png') {
+            isAutoChanging = true;
+            backgroundSelect.value = 'auto';
+            isAutoChanging = false;
+            console.log('[Event] Non-PNG format selected - resetting background from transparent to auto');
+            showStatus('Transparent background is only supported with PNG format. Background reset to Auto.', 'info');
         }
     });
     
