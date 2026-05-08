@@ -35,7 +35,7 @@
                 </svg>
                 <h1>AI Image Generator</h1>
             </div>
-            <p class="subtitle">Powered by Azure OpenAI GPT Image 1.5</p>
+            <p class="subtitle">Powered by Azure OpenAI GPT Image 2</p>
         </header>
 
         <!-- Main Content -->
@@ -51,7 +51,7 @@
                     <!-- Hidden inputs to store the values -->
                     <input type="hidden" id="apiEndpoint">
                     <input type="hidden" id="apiKey">
-                    <input type="hidden" id="deploymentName" value="gpt-image-1.5">
+                    <input type="hidden" id="deploymentName" value="gpt-image-2">
                     <input type="hidden" id="apiVersion" value="2025-04-01-preview">
                 </div>
 
@@ -144,7 +144,7 @@
                             </button>
                         </div>
                         <div class="info-note" id="infoNote" style="margin-top: 0.5rem; padding: 0.75rem; background: rgba(79, 172, 254, 0.1); border: 1px solid rgba(79, 172, 254, 0.3); border-radius: 8px; font-size: 0.85rem; color: #4facfe; display: none;">
-                            <strong>Note:</strong> Azure DALL-E 3 does not support direct image input. The reference image helps you visualize what you want and craft a better prompt.
+                            <strong>Note:</strong> GPT-image-2 supports direct image input. The reference image will be sent to the API along with your prompt.
                         </div>
                     </div>
 
@@ -161,6 +161,8 @@
                             <option value="1024x1024">1024x1024 (Square)</option>
                             <option value="1536x1024">1536x1024 (Landscape)</option>
                             <option value="1024x1536">1024x1536 (Portrait)</option>
+                            <option value="1792x1024">1792x1024 (Wide Landscape)</option>
+                            <option value="1024x1792">1024x1792 (Tall Portrait)</option>
                         </select>
                         <span class="helper-text">Dimensions of the generated image</span>
                     </div>
@@ -174,6 +176,26 @@
                             <option value="high">High</option>
                         </select>
                         <span class="helper-text">Image quality level</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="outputFormat">Output Format</label>
+                        <select id="outputFormat">
+                            <option value="png" selected>PNG</option>
+                            <option value="jpeg">JPEG</option>
+                            <option value="webp">WebP</option>
+                        </select>
+                        <span class="helper-text">Image file format (PNG supports transparency)</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="background">Background</label>
+                        <select id="background">
+                            <option value="auto" selected>Auto</option>
+                            <option value="transparent">Transparent</option>
+                            <option value="opaque">Opaque</option>
+                        </select>
+                        <span class="helper-text">Background type (transparent requires PNG format)</span>
                     </div>
 
                     <div class="form-group">
