@@ -525,16 +525,13 @@ class ImageGenerator {
 
     generateImageId(baseTimestamp = 0, index = 0) {
         this.imageIdCounter += 1;
-        const performanceTimeMicros = (typeof performance !== 'undefined' && typeof performance.now === 'function')
-            ? Math.floor(performance.now() * 1000)
-            : 0;
         let randomSuffix = `${this.imageIdCounter}`;
         if (window.crypto && typeof window.crypto.getRandomValues === 'function') {
             const randomArray = new Uint32Array(1);
             window.crypto.getRandomValues(randomArray);
             randomSuffix = randomArray[0].toString(16);
         }
-        return `img-${baseTimestamp}-${index}-${performanceTimeMicros}-${this.imageIdCounter}-${randomSuffix}`;
+        return `img-${baseTimestamp}-${index}-${this.imageIdCounter}-${randomSuffix}`;
     }
 
     saveImagesToStorage() {
@@ -581,7 +578,10 @@ class ImageGenerator {
                 let migrated = false;
                 // Load images into memory; rendering is handled separately (e.g., on DOMContentLoaded)
                 images.forEach((imageData, index) => {
-                    if (!imageData || !imageData.url) return;
+                    if (!imageData || !imageData.url) {
+                        console.warn('[ImageGenerator] Skipping malformed saved image entry at index', index);
+                        return;
+                    }
                     const timestamp = imageData.timestamp || Date.now();
                     const normalizedImage = {
                         id: imageData.id || this.generateImageId(timestamp, index),
