@@ -525,10 +525,10 @@ class ImageGenerator {
 
     generateImageId(baseTimestamp = 0, index = 0) {
         this.imageIdCounter += 1;
-        const perfTime = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+        const performanceTimeMicros = (typeof performance !== 'undefined' && typeof performance.now === 'function')
             ? Math.floor(performance.now() * 1000)
             : 0;
-        return `img-${baseTimestamp}-${index}-${perfTime}-${this.imageIdCounter}`;
+        return `img-${baseTimestamp}-${index}-${performanceTimeMicros}-${this.imageIdCounter}`;
     }
 
     saveImagesToStorage() {
@@ -614,7 +614,6 @@ class ImageGenerator {
                 { url: imageData.url, id: imageData.id }, 
                 imageData.prompt, 
                 i,
-                imageData.id,
                 imageData.timestamp || 0
             );
             gallery.appendChild(imageCard);
@@ -1281,7 +1280,7 @@ class ImageGenerator {
                 prompt: prompt,
                 timestamp: timestamp
             };
-            const imageCard = this.createImageCard({ url: historyImage.url, id: historyImage.id }, prompt, index, historyImage.id, historyImage.timestamp);
+            const imageCard = this.createImageCard({ url: historyImage.url, id: historyImage.id }, prompt, index, historyImage.timestamp);
             gallery.insertBefore(imageCard, gallery.firstChild);
             this.generatedImages.push(historyImage);
         });
@@ -1292,10 +1291,10 @@ class ImageGenerator {
         this.saveImagesToStorage();
     }
 
-    createImageCard(imageData, prompt, index, imageId = null, baseTimestamp = 0) {
+    createImageCard(imageData, prompt, index, baseTimestamp = 0) {
         const card = document.createElement('div');
         card.className = 'image-card';
-        const resolvedImageId = imageData.id || imageId || this.generateImageId(baseTimestamp, index);
+        const resolvedImageId = imageData.id || this.generateImageId(baseTimestamp, index);
 
         // Get the image URL (could be url or b64_json depending on response_format)
         const outputFormat = this.configManager?.getConfig()?.outputFormat || 'png';
