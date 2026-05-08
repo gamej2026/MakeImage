@@ -676,7 +676,9 @@ class ImageGenerator {
                     body: formData
                 };
             } else if (config.generationMode === 'image-with-text' && this.referenceImageBase64) {
-                // Image + Text mode - current images/generations API does not accept an image parameter
+                // Image + Text mode:
+                // current images/generations API does not accept an image parameter,
+                // so the uploaded image is a user-side visual reference to help craft the prompt.
                 console.log('[ImageGenerator] Step 3: Building image+text generation API request...');
                 url = buildApiUrl(endpoint, config.deploymentName, config.apiVersion, 'generations');
                 console.log('[ImageGenerator] API Endpoint (Generation with image):', url);
@@ -715,7 +717,8 @@ class ImageGenerator {
                 }
 
                 // Build JSON body for image generation request.
-                // In image-with-text mode, the uploaded image remains available in the UI only;
+                // In image-with-text mode, the uploaded image is intentionally not sent to API.
+                // It remains in UI as reference only; generation is prompt-driven because
                 // /images/generations rejects an `image` request parameter.
                 const generationRequestBody = {
                     prompt: enhancedPrompt,
