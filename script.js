@@ -714,17 +714,23 @@ class ImageGenerator {
                     }
                 }
 
-                // Build FormData with image input for gpt-image-2
-                const formData = new FormData();
-                if (isDirectOpenAI(endpoint)) {
-                    formData.append('model', config.deploymentName);
+                // Build JSON body with base64 image input for gpt-image-2
+                // The /images/generations endpoint only accepts application/json
+                const commaIndex = this.referenceImageBase64.indexOf(',');
+                if (commaIndex === -1) {
+                    throw new Error('Invalid reference image format: expected a data URL');
                 }
-                const refImageBlob = await dataURLToBlob(this.referenceImageBase64);
-                formData.append('image', refImageBlob, 'reference.png');
-                formData.append('prompt', enhancedPrompt);
-                formData.append('n', config.n.toString());
-                formData.append('size', config.size);
-                formData.append('quality', config.quality);
+                const refImageBase64 = this.referenceImageBase64.slice(commaIndex + 1);
+                const imageRequestBody = {
+                    prompt: enhancedPrompt,
+                    image: refImageBase64,
+                    n: config.n,
+                    size: config.size,
+                    quality: config.quality
+                };
+                if (isDirectOpenAI(endpoint)) {
+                    imageRequestBody.model = config.deploymentName;
+                }
                 
                 console.log('[ImageGenerator] Image+Text request prepared:', {
                     prompt: enhancedPrompt.substring(0, 100) + (enhancedPrompt.length > 100 ? '...' : ''),
@@ -736,8 +742,11 @@ class ImageGenerator {
 
                 fetchOptions = {
                     method: 'POST',
-                    headers: buildAuthHeaders(config.apiKey, endpoint),
-                    body: formData
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...buildAuthHeaders(config.apiKey, endpoint)
+                    },
+                    body: JSON.stringify(imageRequestBody)
                 };
             } else {
                 // Text-only image generation mode - use /images/generations endpoint
