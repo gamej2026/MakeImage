@@ -47,10 +47,16 @@
                 <!-- API Settings -->
                 <div class="config-section">
                     <h3 class="config-subtitle">API Settings</h3>
-                    <!-- API Endpoint, API Key, and Deployment Name are configured via GitHub Secrets -->
-                    <!-- Hidden inputs to store the values -->
-                    <input type="hidden" id="apiEndpoint">
-                    <input type="hidden" id="apiKey">
+                    <div class="form-group">
+                        <label for="apiEndpoint">API Endpoint</label>
+                        <input type="text" id="apiEndpoint" placeholder="https://api.openai.com">
+                        <span class="helper-text">OpenAI: <code>https://api.openai.com</code> &nbsp;|&nbsp; Azure: <code>https://your-resource.openai.azure.com</code></span>
+                    </div>
+                    <div class="form-group">
+                        <label for="apiKey">API Key</label>
+                        <input type="password" id="apiKey" placeholder="sk-... or your Azure OpenAI API key">
+                        <span class="helper-text">Your API key is stored in your browser only and never sent anywhere except the API endpoint above.</span>
+                    </div>
                     <input type="hidden" id="deploymentName" value="gpt-image-2">
                     <input type="hidden" id="apiVersion" value="2025-04-01-preview">
                 </div>

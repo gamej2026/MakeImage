@@ -1,3 +1,28 @@
+// API type helpers
+function isDirectOpenAI(endpoint) {
+    try {
+        const url = new URL(endpoint);
+        return url.hostname === 'api.openai.com';
+    } catch (e) {
+        return false;
+    }
+}
+
+function buildApiUrl(endpoint, deploymentName, apiVersion, path) {
+    const base = endpoint.replace(/\/$/, '');
+    if (isDirectOpenAI(endpoint)) {
+        return `${base}/v1/images/${path}`;
+    }
+    return `${base}/openai/deployments/${deploymentName}/images/${path}?api-version=${apiVersion}`;
+}
+
+function buildAuthHeaders(apiKey, endpoint) {
+    if (isDirectOpenAI(endpoint)) {
+        return { 'Authorization': `Bearer ${apiKey}` };
+    }
+    return { 'api-key': apiKey };
+}
+
 // Configuration Manager
 class ConfigManager {
     constructor() {
@@ -46,6 +71,11 @@ class ConfigManager {
             }
         } else {
             console.log('[ConfigManager] No GitHub secrets found, using localStorage or manual config');
+        }
+        
+        // Default to OpenAI direct API endpoint if nothing has been set yet
+        if (!document.getElementById('apiEndpoint').value) {
+            document.getElementById('apiEndpoint').value = 'https://api.openai.com';
         }
         
         // Set hardcoded deployment name
@@ -135,21 +165,23 @@ class ConfigManager {
     validateConfig(config) {
         console.log('[ConfigManager] Validating configuration...');
         if (!config.apiEndpoint) {
-            throw new Error('Azure OpenAI Endpoint is required. Please configure it in Settings or set AZURE_OPENAI_ENDPOINT in GitHub Secrets.');
+            throw new Error('API Endpoint is required. Use https://api.openai.com for OpenAI, or your Azure OpenAI endpoint.');
         }
-        // Validate Azure OpenAI endpoint format
-        // Support both .openai.azure.com and .cognitiveservices.azure.com endpoints
-        if (!config.apiEndpoint.match(/^https:\/\/[a-zA-Z0-9-]+\.(openai\.azure\.com|cognitiveservices\.azure\.com)\/?$/)) {
-            throw new Error('Invalid Azure OpenAI Endpoint format. Expected: https://your-resource.openai.azure.com or https://your-resource.cognitiveservices.azure.com');
+        const isOpenAI = isDirectOpenAI(config.apiEndpoint);
+        const isAzure = /^https:\/\/[a-zA-Z0-9-]+\.(openai\.azure\.com|cognitiveservices\.azure\.com)\/?$/.test(config.apiEndpoint);
+        if (!isOpenAI && !isAzure) {
+            throw new Error('Invalid API Endpoint. Use https://api.openai.com for OpenAI, or https://your-resource.openai.azure.com for Azure OpenAI.');
         }
         if (!config.apiKey) {
-            throw new Error('API Key is required. Please configure it in Settings or set AZURE_OPENAI_API_KEY in GitHub Secrets.');
+            throw new Error('API Key is required. Enter your OpenAI or Azure OpenAI API key.');
         }
-        if (!config.deploymentName) {
-            throw new Error('Deployment Name is required');
-        }
-        if (!config.apiVersion) {
-            throw new Error('API Version is required');
+        if (!isOpenAI) {
+            if (!config.deploymentName) {
+                throw new Error('Deployment Name is required for Azure OpenAI');
+            }
+            if (!config.apiVersion) {
+                throw new Error('API Version is required for Azure OpenAI');
+            }
         }
         if (!config.prompt) {
             throw new Error('Prompt is required');
@@ -599,7 +631,7 @@ class ImageGenerator {
             if (config.generationMode === 'image-edit') {
                 // Image editing mode - use /images/edits endpoint
                 console.log('[ImageGenerator] Step 3: Building image editing API request...');
-                url = `${endpoint}/openai/deployments/${config.deploymentName}/images/edits?api-version=${config.apiVersion}`;
+                url = buildApiUrl(endpoint, config.deploymentName, config.apiVersion, 'edits');
                 console.log('[ImageGenerator] API Endpoint (Edit):', url);
                 
                 // Get mask and base image from mask editor
@@ -621,6 +653,9 @@ class ImageGenerator {
                 
                 // Build FormData for multipart request
                 const formData = new FormData();
+                if (isDirectOpenAI(endpoint)) {
+                    formData.append('model', config.deploymentName);
+                }
                 formData.append('image', imageBlob, 'image.png');
                 formData.append('mask', maskBlob, 'mask.png');
                 formData.append('prompt', config.prompt.trim());
@@ -637,15 +672,13 @@ class ImageGenerator {
                 
                 fetchOptions = {
                     method: 'POST',
-                    headers: {
-                        'api-key': config.apiKey
-                    },
+                    headers: buildAuthHeaders(config.apiKey, endpoint),
                     body: formData
                 };
             } else if (config.generationMode === 'image-with-text' && this.referenceImageBase64) {
                 // Image + Text mode - gpt-image-2 supports direct image input via multipart
                 console.log('[ImageGenerator] Step 3: Building image+text generation API request...');
-                url = `${endpoint}/openai/deployments/${config.deploymentName}/images/generations?api-version=${config.apiVersion}`;
+                url = buildApiUrl(endpoint, config.deploymentName, config.apiVersion, 'generations');
                 console.log('[ImageGenerator] API Endpoint (Generation with image):', url);
 
                 // Build the prompt with style enhancements
@@ -683,6 +716,9 @@ class ImageGenerator {
 
                 // Build FormData with image input for gpt-image-2
                 const formData = new FormData();
+                if (isDirectOpenAI(endpoint)) {
+                    formData.append('model', config.deploymentName);
+                }
                 const refImageBlob = await dataURLToBlob(this.referenceImageBase64);
                 formData.append('image', refImageBlob, 'reference.png');
                 formData.append('prompt', enhancedPrompt);
@@ -700,15 +736,13 @@ class ImageGenerator {
 
                 fetchOptions = {
                     method: 'POST',
-                    headers: {
-                        'api-key': config.apiKey
-                    },
+                    headers: buildAuthHeaders(config.apiKey, endpoint),
                     body: formData
                 };
             } else {
                 // Text-only image generation mode - use /images/generations endpoint
                 console.log('[ImageGenerator] Step 3: Building text-only image generation API request...');
-                url = `${endpoint}/openai/deployments/${config.deploymentName}/images/generations?api-version=${config.apiVersion}`;
+                url = buildApiUrl(endpoint, config.deploymentName, config.apiVersion, 'generations');
                 console.log('[ImageGenerator] API Endpoint (Generation):', url);
 
                 // Build the prompt with style enhancements
@@ -754,6 +788,9 @@ class ImageGenerator {
                     output_format: config.outputFormat,
                     background: config.background
                 };
+                if (isDirectOpenAI(endpoint)) {
+                    requestBody.model = config.deploymentName;
+                }
 
                 console.log('[ImageGenerator] gpt-image-2 model - styles applied via prompt enhancement');
 
@@ -766,14 +803,14 @@ class ImageGenerator {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'api-key': config.apiKey
+                        ...buildAuthHeaders(config.apiKey, endpoint)
                     },
                     body: JSON.stringify(requestBody)
                 };
             }
 
             // Make API call
-            console.log('[ImageGenerator] Step 4: Sending API request to Azure OpenAI...');
+            console.log('[ImageGenerator] Step 4: Sending API request...');
             const startTime = Date.now();
             
             const response = await fetch(url, fetchOptions);
@@ -942,7 +979,7 @@ class ImageGenerator {
         
         if (config.generationMode === 'image-edit') {
             // Image editing mode
-            url = `${endpoint}/openai/deployments/${config.deploymentName}/images/edits?api-version=${config.apiVersion}`;
+            url = buildApiUrl(endpoint, config.deploymentName, config.apiVersion, 'edits');
             
             const maskEditor = window.maskEditor;
             if (!maskEditor || !maskEditor.baseImage) {
@@ -960,6 +997,9 @@ class ImageGenerator {
             const maskBlob = await dataURLToBlob(maskDataURL);
             
             const formData = new FormData();
+            if (isDirectOpenAI(endpoint)) {
+                formData.append('model', config.deploymentName);
+            }
             formData.append('image', imageBlob, 'image.png');
             formData.append('mask', maskBlob, 'mask.png');
             formData.append('prompt', config.prompt.trim());
@@ -969,14 +1009,12 @@ class ImageGenerator {
             
             fetchOptions = {
                 method: 'POST',
-                headers: {
-                    'api-key': config.apiKey
-                },
+                headers: buildAuthHeaders(config.apiKey, endpoint),
                 body: formData
             };
         } else {
             // Text-only image generation mode
-            url = `${endpoint}/openai/deployments/${config.deploymentName}/images/generations?api-version=${config.apiVersion}`;
+            url = buildApiUrl(endpoint, config.deploymentName, config.apiVersion, 'generations');
 
             // Build the prompt with style enhancements
             let enhancedPrompt = config.prompt.trim();
@@ -1018,12 +1056,15 @@ class ImageGenerator {
                 output_format: config.outputFormat,
                 background: config.background
             };
+            if (isDirectOpenAI(endpoint)) {
+                requestBody.model = config.deploymentName;
+            }
             
             fetchOptions = {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'api-key': config.apiKey
+                    ...buildAuthHeaders(config.apiKey, endpoint)
                 },
                 body: JSON.stringify(requestBody)
             };
@@ -1066,7 +1107,7 @@ class ImageGenerator {
         
         if (config.generationMode === 'image-edit') {
             // Image editing mode
-            url = `${endpoint}/openai/deployments/${config.deploymentName}/images/edits?api-version=${config.apiVersion}`;
+            url = buildApiUrl(endpoint, config.deploymentName, config.apiVersion, 'edits');
             
             const maskEditor = window.maskEditor;
             if (!maskEditor || !maskEditor.baseImage) {
@@ -1084,6 +1125,9 @@ class ImageGenerator {
             const maskBlob = await dataURLToBlob(maskDataURL);
             
             const formData = new FormData();
+            if (isDirectOpenAI(endpoint)) {
+                formData.append('model', config.deploymentName);
+            }
             formData.append('image', imageBlob, 'image.png');
             formData.append('mask', maskBlob, 'mask.png');
             formData.append('prompt', config.prompt.trim());
@@ -1093,14 +1137,12 @@ class ImageGenerator {
             
             fetchOptions = {
                 method: 'POST',
-                headers: {
-                    'api-key': config.apiKey
-                },
+                headers: buildAuthHeaders(config.apiKey, endpoint),
                 body: formData
             };
         } else {
             // Text-only image generation mode
-            url = `${endpoint}/openai/deployments/${config.deploymentName}/images/generations?api-version=${config.apiVersion}`;
+            url = buildApiUrl(endpoint, config.deploymentName, config.apiVersion, 'generations');
 
             let enhancedPrompt = config.prompt.trim();
             
@@ -1141,12 +1183,15 @@ class ImageGenerator {
                 output_format: config.outputFormat,
                 background: config.background
             };
+            if (isDirectOpenAI(endpoint)) {
+                requestBody.model = config.deploymentName;
+            }
             
             fetchOptions = {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'api-key': config.apiKey
+                    ...buildAuthHeaders(config.apiKey, endpoint)
                 },
                 body: JSON.stringify(requestBody)
             };

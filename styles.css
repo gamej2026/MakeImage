@@ -722,6 +722,15 @@ body {
     flex-shrink: 0;
 }
 
+.helper-text code {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.8rem;
+    background: rgba(255, 255, 255, 0.08);
+    padding: 0.1rem 0.3rem;
+    border-radius: 4px;
+    color: var(--text-primary);
+}
+
 /* Scrollbar Styling */
 ::-webkit-scrollbar {
     width: 12px;
