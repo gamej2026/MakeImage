@@ -46,10 +46,6 @@ class ConfigManager {
                 console.log('[ConfigManager] ✓ Applied AZURE_OPENAI_ENDPOINT from GitHub secrets');
                 hasEndpoint = true;
             } else {
-                // Default to OpenAI direct API so users can immediately enter their key
-                if (!document.getElementById('apiEndpoint').value) {
-                    document.getElementById('apiEndpoint').value = 'https://api.openai.com';
-                }
                 console.warn('[ConfigManager] ⚠ AZURE_OPENAI_ENDPOINT is not set in GitHub secrets');
             }
             
@@ -75,10 +71,11 @@ class ConfigManager {
             }
         } else {
             console.log('[ConfigManager] No GitHub secrets found, using localStorage or manual config');
-            // Default to OpenAI direct API endpoint if nothing is stored
-            if (!document.getElementById('apiEndpoint').value) {
-                document.getElementById('apiEndpoint').value = 'https://api.openai.com';
-            }
+        }
+        
+        // Default to OpenAI direct API endpoint if nothing has been set yet
+        if (!document.getElementById('apiEndpoint').value) {
+            document.getElementById('apiEndpoint').value = 'https://api.openai.com';
         }
         
         // Set hardcoded deployment name
