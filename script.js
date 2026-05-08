@@ -519,14 +519,16 @@ class ImageGenerator {
         this.generatedImages = [];
         this.referenceImageBase64 = null;
         this.imageStorageKey = 'generatedImagesGallery';
+        this.imageIdCounter = 0;
         this.loadImagesFromStorage();
     }
 
-    generateImageId(baseTimestamp = Date.now(), index = 0) {
-        if (window.crypto && typeof window.crypto.randomUUID === 'function') {
-            return window.crypto.randomUUID();
-        }
-        return `img-${baseTimestamp}-${index}-${Math.random().toString(36).slice(2, 10)}`;
+    generateImageId(baseTimestamp = 0, index = 0) {
+        this.imageIdCounter += 1;
+        const perfTime = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+            ? Math.floor(performance.now() * 1000)
+            : 0;
+        return `img-${baseTimestamp}-${index}-${perfTime}-${this.imageIdCounter}`;
     }
 
     saveImagesToStorage() {
@@ -612,7 +614,8 @@ class ImageGenerator {
                 { url: imageData.url, id: imageData.id }, 
                 imageData.prompt, 
                 i,
-                imageData.id
+                imageData.id,
+                imageData.timestamp || 0
             );
             gallery.appendChild(imageCard);
         }
@@ -1278,7 +1281,7 @@ class ImageGenerator {
                 prompt: prompt,
                 timestamp: timestamp
             };
-            const imageCard = this.createImageCard({ url: historyImage.url, id: historyImage.id }, prompt, index, historyImage.id);
+            const imageCard = this.createImageCard({ url: historyImage.url, id: historyImage.id }, prompt, index, historyImage.id, historyImage.timestamp);
             gallery.insertBefore(imageCard, gallery.firstChild);
             this.generatedImages.push(historyImage);
         });
@@ -1289,10 +1292,10 @@ class ImageGenerator {
         this.saveImagesToStorage();
     }
 
-    createImageCard(imageData, prompt, index, imageId = null) {
+    createImageCard(imageData, prompt, index, imageId = null, baseTimestamp = 0) {
         const card = document.createElement('div');
         card.className = 'image-card';
-        const resolvedImageId = imageData.id || imageId || this.generateImageId(Date.now(), index);
+        const resolvedImageId = imageData.id || imageId || this.generateImageId(baseTimestamp, index);
 
         // Get the image URL (could be url or b64_json depending on response_format)
         const outputFormat = this.configManager?.getConfig()?.outputFormat || 'png';
