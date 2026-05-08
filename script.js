@@ -1,13 +1,19 @@
 // API type helpers
 function isDirectOpenAI(endpoint) {
-    return Boolean(endpoint && endpoint.includes('api.openai.com'));
+    try {
+        const url = new URL(endpoint);
+        return url.hostname === 'api.openai.com';
+    } catch (e) {
+        return false;
+    }
 }
 
 function buildApiUrl(endpoint, deploymentName, apiVersion, path) {
+    const base = endpoint.replace(/\/$/, '');
     if (isDirectOpenAI(endpoint)) {
-        return `https://api.openai.com/v1/images/${path}`;
+        return `${base}/v1/images/${path}`;
     }
-    return `${endpoint.replace(/\/$/, '')}/openai/deployments/${deploymentName}/images/${path}?api-version=${apiVersion}`;
+    return `${base}/openai/deployments/${deploymentName}/images/${path}?api-version=${apiVersion}`;
 }
 
 function buildAuthHeaders(apiKey, endpoint) {
