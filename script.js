@@ -531,7 +531,7 @@ class ImageGenerator {
             window.crypto.getRandomValues(randomArray);
             randomSuffix = randomArray[0].toString(16);
         }
-        return `img-${baseTimestamp}-${index}-${this.imageIdCounter}-${randomSuffix}`;
+        return `img-${baseTimestamp}-${index}-${randomSuffix}`;
     }
 
     saveImagesToStorage() {
