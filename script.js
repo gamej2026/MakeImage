@@ -1180,6 +1180,12 @@ class ImageGenerator {
         }
     }
 
+    static getMimeType(outputFormat) {
+        if (outputFormat === 'jpeg') return 'image/jpeg';
+        if (outputFormat === 'webp') return 'image/webp';
+        return 'image/png';
+    }
+
     displayImages(images, prompt) {
         console.log(`[ImageGenerator] Displaying ${images.length} images in gallery...`);
         const gallery = document.getElementById('imageGallery');
@@ -1193,7 +1199,7 @@ class ImageGenerator {
         // Store images with their prompts and timestamps
         const timestamp = Date.now();
         const outputFormat = this.configManager.getConfig().outputFormat || 'png';
-        const mimeType = outputFormat === 'jpeg' ? 'image/jpeg' : outputFormat === 'webp' ? 'image/webp' : 'image/png';
+        const mimeType = ImageGenerator.getMimeType(outputFormat);
         images.forEach(imageData => {
             this.generatedImages.push({
                 url: imageData.url || (imageData.b64_json ? `data:${mimeType};base64,${imageData.b64_json}` : ''),
@@ -1214,7 +1220,7 @@ class ImageGenerator {
 
         // Get the image URL (could be url or b64_json depending on response_format)
         const outputFormat = this.configManager?.getConfig()?.outputFormat || 'png';
-        const mimeType = outputFormat === 'jpeg' ? 'image/jpeg' : outputFormat === 'webp' ? 'image/webp' : 'image/png';
+        const mimeType = ImageGenerator.getMimeType(outputFormat);
         const imageUrl = imageData.url || (imageData.b64_json ? `data:${mimeType};base64,${imageData.b64_json}` : '');
         console.log(`[ImageGenerator] Image ${index + 1} URL type:`, imageUrl.startsWith('data:') ? 'base64' : 'url');
 
@@ -1810,11 +1816,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Enforce PNG when transparent background is selected
+    let isAutoChanging = false;
     document.getElementById('background').addEventListener('change', (e) => {
+        if (isAutoChanging) return;
         if (e.target.value === 'transparent') {
             const outputFormatSelect = document.getElementById('outputFormat');
             if (outputFormatSelect.value !== 'png') {
+                isAutoChanging = true;
                 outputFormatSelect.value = 'png';
+                isAutoChanging = false;
                 console.log('[Event] Transparent background requires PNG - auto-switching output format');
                 showStatus('Transparent background requires PNG format. Output format changed to PNG.', 'info');
             }
@@ -1823,9 +1833,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Warn when switching away from PNG with transparent background
     document.getElementById('outputFormat').addEventListener('change', (e) => {
+        if (isAutoChanging) return;
         const backgroundSelect = document.getElementById('background');
         if (backgroundSelect.value === 'transparent' && e.target.value !== 'png') {
+            isAutoChanging = true;
             backgroundSelect.value = 'auto';
+            isAutoChanging = false;
             console.log('[Event] Non-PNG format selected - resetting background from transparent to auto');
             showStatus('Transparent background is only supported with PNG format. Background reset to Auto.', 'info');
         }
