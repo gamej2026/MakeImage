@@ -528,17 +528,24 @@ class ImageGenerator {
         const performanceTimeMicros = (typeof performance !== 'undefined' && typeof performance.now === 'function')
             ? Math.floor(performance.now() * 1000)
             : 0;
-        return `img-${baseTimestamp}-${index}-${performanceTimeMicros}-${this.imageIdCounter}`;
+        let randomSuffix = `${this.imageIdCounter}`;
+        if (window.crypto && typeof window.crypto.getRandomValues === 'function') {
+            const randomArray = new Uint32Array(1);
+            window.crypto.getRandomValues(randomArray);
+            randomSuffix = randomArray[0].toString(16);
+        }
+        return `img-${baseTimestamp}-${index}-${performanceTimeMicros}-${this.imageIdCounter}-${randomSuffix}`;
     }
 
     saveImagesToStorage() {
         try {
             console.log('[ImageGenerator] Saving images to localStorage...');
+            const fallbackTimestamp = Date.now();
             const imagesToSave = this.generatedImages.map((img, index) => ({
-                id: img.id || this.generateImageId(img.timestamp || Date.now(), index),
+                id: img.id || this.generateImageId(img.timestamp || fallbackTimestamp, index),
                 url: img.url,
                 prompt: img.prompt,
-                timestamp: img.timestamp || Date.now()
+                timestamp: img.timestamp || fallbackTimestamp
             }));
             localStorage.setItem(this.imageStorageKey, JSON.stringify(imagesToSave));
             console.log('[ImageGenerator] Saved', imagesToSave.length, 'images to localStorage');
@@ -549,11 +556,12 @@ class ImageGenerator {
                 console.log('[ImageGenerator] Storage full, keeping only last 10 images');
                 this.generatedImages = this.generatedImages.slice(-10);
                 try {
+                    const fallbackTimestamp = Date.now();
                     const imagesToSave = this.generatedImages.map((img, index) => ({
-                        id: img.id || this.generateImageId(img.timestamp || Date.now(), index),
+                        id: img.id || this.generateImageId(img.timestamp || fallbackTimestamp, index),
                         url: img.url,
                         prompt: img.prompt,
-                        timestamp: img.timestamp || Date.now()
+                        timestamp: img.timestamp || fallbackTimestamp
                     }));
                     localStorage.setItem(this.imageStorageKey, JSON.stringify(imagesToSave));
                 } catch (retryError) {
