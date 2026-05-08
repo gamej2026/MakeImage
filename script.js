@@ -715,7 +715,8 @@ class ImageGenerator {
                 }
 
                 // Build JSON body for image generation request.
-                // Reference image is kept in UI context only, because /images/generations rejects `image`.
+                // In image-with-text mode, the uploaded image remains available in the UI only;
+                // /images/generations rejects an `image` request parameter.
                 const generationRequestBody = {
                     prompt: enhancedPrompt,
                     n: config.n,
@@ -731,8 +732,7 @@ class ImageGenerator {
                     size: config.size,
                     quality: config.quality,
                     n: config.n,
-                    hasReferenceImage: true,
-                    sendsImageToApi: false
+                    imageUsedInRequest: false
                 });
 
                 fetchOptions = {
