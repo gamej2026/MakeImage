@@ -522,10 +522,18 @@ class ImageGenerator {
         this.loadImagesFromStorage();
     }
 
+    generateImageId(baseTimestamp = Date.now(), index = 0) {
+        if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+            return window.crypto.randomUUID();
+        }
+        return `img-${baseTimestamp}-${index}-${Math.random().toString(36).slice(2, 10)}`;
+    }
+
     saveImagesToStorage() {
         try {
             console.log('[ImageGenerator] Saving images to localStorage...');
-            const imagesToSave = this.generatedImages.map(img => ({
+            const imagesToSave = this.generatedImages.map((img, index) => ({
+                id: img.id || this.generateImageId(img.timestamp || Date.now(), index),
                 url: img.url,
                 prompt: img.prompt,
                 timestamp: img.timestamp || Date.now()
@@ -539,7 +547,8 @@ class ImageGenerator {
                 console.log('[ImageGenerator] Storage full, keeping only last 10 images');
                 this.generatedImages = this.generatedImages.slice(-10);
                 try {
-                    const imagesToSave = this.generatedImages.map(img => ({
+                    const imagesToSave = this.generatedImages.map((img, index) => ({
+                        id: img.id || this.generateImageId(img.timestamp || Date.now(), index),
                         url: img.url,
                         prompt: img.prompt,
                         timestamp: img.timestamp || Date.now()
@@ -559,10 +568,24 @@ class ImageGenerator {
             if (savedImages) {
                 const images = JSON.parse(savedImages);
                 console.log('[ImageGenerator] Found', images.length, 'saved images');
+                let migrated = false;
                 // Load images into memory; rendering is handled separately (e.g., on DOMContentLoaded)
-                images.forEach(imageData => {
-                    this.generatedImages.push(imageData);
+                images.forEach((imageData, index) => {
+                    if (!imageData || !imageData.url) return;
+                    const timestamp = imageData.timestamp || Date.now();
+                    const normalizedImage = {
+                        id: imageData.id || this.generateImageId(timestamp, index),
+                        url: imageData.url,
+                        prompt: imageData.prompt || '',
+                        timestamp: timestamp
+                    };
+                    if (!imageData.id) migrated = true;
+                    this.generatedImages.push(normalizedImage);
                 });
+                if (migrated) {
+                    console.log('[ImageGenerator] Migrating saved images to include IDs');
+                    this.saveImagesToStorage();
+                }
             } else {
                 console.log('[ImageGenerator] No saved images found');
             }
@@ -586,9 +609,10 @@ class ImageGenerator {
         for (let i = this.generatedImages.length - 1; i >= 0; i--) {
             const imageData = this.generatedImages[i];
             const imageCard = this.createImageCard(
-                { url: imageData.url }, 
+                { url: imageData.url, id: imageData.id }, 
                 imageData.prompt, 
-                i
+                i,
+                imageData.id
             );
             gallery.appendChild(imageCard);
         }
@@ -1241,23 +1265,22 @@ class ImageGenerator {
     displayImages(images, prompt) {
         console.log(`[ImageGenerator] Displaying ${images.length} images in gallery...`);
         const gallery = document.getElementById('imageGallery');
-        
-        images.forEach((imageData, index) => {
-            console.log(`[ImageGenerator] Creating image card ${index + 1}/${images.length}`);
-            const imageCard = this.createImageCard(imageData, prompt, index);
-            gallery.insertBefore(imageCard, gallery.firstChild);
-        });
-
-        // Store images with their prompts and timestamps
         const timestamp = Date.now();
         const outputFormat = this.configManager.getConfig().outputFormat || 'png';
         const mimeType = ImageGenerator.getMimeType(outputFormat);
-        images.forEach(imageData => {
-            this.generatedImages.push({
-                url: imageData.url || (imageData.b64_json ? `data:${mimeType};base64,${imageData.b64_json}` : ''),
+        
+        images.forEach((imageData, index) => {
+            console.log(`[ImageGenerator] Creating image card ${index + 1}/${images.length}`);
+            const imageUrl = imageData.url || (imageData.b64_json ? `data:${mimeType};base64,${imageData.b64_json}` : '');
+            const historyImage = {
+                id: this.generateImageId(timestamp, index),
+                url: imageUrl,
                 prompt: prompt,
                 timestamp: timestamp
-            });
+            };
+            const imageCard = this.createImageCard({ url: historyImage.url, id: historyImage.id }, prompt, index, historyImage.id);
+            gallery.insertBefore(imageCard, gallery.firstChild);
+            this.generatedImages.push(historyImage);
         });
         
         console.log(`[ImageGenerator] Total images in history: ${this.generatedImages.length}`);
@@ -1266,9 +1289,10 @@ class ImageGenerator {
         this.saveImagesToStorage();
     }
 
-    createImageCard(imageData, prompt, index) {
+    createImageCard(imageData, prompt, index, imageId = null) {
         const card = document.createElement('div');
         card.className = 'image-card';
+        const resolvedImageId = imageData.id || imageId || this.generateImageId(Date.now(), index);
 
         // Get the image URL (could be url or b64_json depending on response_format)
         const outputFormat = this.configManager?.getConfig()?.outputFormat || 'png';
@@ -1353,7 +1377,7 @@ class ImageGenerator {
         deleteBtn.addEventListener('click', () => {
             console.log(`[ImageGenerator] Delete button clicked for image ${index + 1}`);
             if (confirm('Are you sure you want to delete this image?')) {
-                this.deleteImage(card, imageUrl);
+                this.deleteImage(card, resolvedImageId, imageUrl);
             }
         });
 
@@ -1369,11 +1393,14 @@ class ImageGenerator {
         return card;
     }
 
-    deleteImage(card, imageUrl) {
+    deleteImage(card, imageId, imageUrl) {
         console.log('[ImageGenerator] Deleting image...');
         
-        // Find and remove from generatedImages array
-        const imageIndex = this.generatedImages.findIndex(img => img.url === imageUrl);
+        // Find and remove from generatedImages array (ID first, URL fallback)
+        let imageIndex = this.generatedImages.findIndex(img => img.id === imageId);
+        if (imageIndex === -1) {
+            imageIndex = this.generatedImages.findIndex(img => img.url === imageUrl);
+        }
         if (imageIndex !== -1) {
             this.generatedImages.splice(imageIndex, 1);
             console.log(`[ImageGenerator] Removed image at index ${imageIndex} from array`);
